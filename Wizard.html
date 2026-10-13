@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html><head><base target="_top"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--g:#2E9E62;--gd:#1F7A4A;--ink:#1B2631;--mut:#5B6874;--line:#D5DDE2;--bg:#F4F7F5;--warn:#FFF4DB;--warnink:#7A5300}
+*{box-sizing:border-box}body{font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);margin:0;font-size:14px;background:#fff}
+.wrap{padding:4px 6px 80px}h2{font-size:19px;margin:6px 0 4px}p{margin:6px 0;line-height:1.45}.mut{color:var(--mut)}.small{font-size:12.5px}
+.bar{height:6px;background:var(--line);border-radius:4px;margin:2px 0 12px;overflow:hidden}.bar i{display:block;height:100%;background:var(--g);width:0;transition:width .3s}
+label{display:block;font-weight:600;margin:12px 0 4px}input[type=text],input[type=number],input[type=password],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit}
+textarea{min-height:60px;resize:vertical}.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips label{font-weight:500;margin:0;border:1px solid var(--line);border-radius:999px;padding:6px 11px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chips input{margin:0}.chips label.on{background:#E3F4EA;border-color:var(--g)}
+.btns{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;justify-content:space-between}
+button{border:0;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}.pri{background:var(--g);color:#fff}.pri:disabled{opacity:.5}.sec{background:var(--bg);color:var(--ink)}
+.box{background:var(--bg);border-radius:10px;padding:10px 12px;margin:10px 0}.warn{background:var(--warn);color:var(--warnink)}.err{color:#B3261E;font-weight:600;margin-top:8px}
+.ok{color:var(--gd);font-weight:700}table{border-collapse:collapse;width:100%;font-size:13px}td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.act{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0}.hide{display:none}a{color:var(--gd)}
+.steps li{margin:4px 0}.big{font-size:16px}
+</style></head><body><div class="wrap">
+<div class="bar"><i id="prog"></i></div>
+
+<!-- 0 welcome -->
+<section data-s="0">
+  <h2>🐂 Welcome to FitBull</h2>
+  <p>Answer a few questions (about 10 minutes) and FitBull builds your training and food plan, sets up this Sheet, schedules your morning email and publishes your phone app.</p>
+  <div class="box small">Your data stays in <b>this Sheet</b>, in your own Google account. Nobody else – including whoever shared FitBull with you – can see it.</div>
+  <p class="small mut">FitBull gives general fitness coaching, not medical advice.</p>
+</section>
+
+<!-- 1 key -->
+<section data-s="1" class="hide">
+  <h2>Your free AI key</h2>
+  <p>FitBull's coach, food photos and meal ideas use Google's Gemini AI – with <b>your own</b> free key.</p>
+  <ol class="steps small"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> (same Google account).</li>
+    <li>Click <b>Create API key</b> and copy it with the <b>Copy</b> button (a long mix of letters and numbers – the exact start doesn't matter).</li><li>Paste it here and tap Check.</li></ol>
+  <div class="row"><input type="password" id="key" placeholder="Paste your key" autocomplete="off"><button class="sec" id="keyCheck" style="flex:0 0 auto">Check</button></div>
+  <div id="keyMsg" class="small"></div>
+  <p class="small mut">Tip: use the copy icon next to the key on that page. You can also skip this and add it later (FitBull ▸ Change my goals or plan) – FitBull still works, just without the AI features.</p>
+</section>
+
+<!-- 2 about you -->
+<section data-s="2" class="hide">
+  <h2>About you</h2>
+  <label>First name</label><input type="text" id="name">
+  <div class="row"><div><label>Sex</label><select id="sex"><option value="male">Male</option><option value="female">Female</option></select></div>
+    <div><label>Age</label><input type="number" id="age" min="18" max="90"></div></div>
+  <div class="row"><div><label>Height (cm)</label><input type="number" id="heightCm"></div><div><label>Weight (kg)</label><input type="number" id="weightKg" step="0.1"></div></div>
+  <div class="row"><div><label>Work</label><select id="job"><option value="desk">Mostly sitting (desk)</option><option value="feet">On my feet a lot</option><option value="physical">Physical job</option><option value="shifts">Shift work</option></select></div>
+    <div><label>Daily steps now (roughly)</label><select id="steps"><option value="3000">Under 4,000</option><option value="5000" selected>About 5,000</option><option value="7000">About 7,000</option><option value="9000">About 9,000</option><option value="11000">10,000+</option></select></div></div>
+</section>
+
+<!-- 3 health -->
+<section data-s="3" class="hide">
+  <h2>Health check</h2>
+  <p class="small mut">So the plan is safe for you. Tick anything that applies – it's private and optional.</p>
+  <div class="chips" id="healthChips">
+    <label><input type="checkbox" value="heart">Heart condition or chest pain with exercise</label>
+    <label><input type="checkbox" value="faint">Dizziness or fainting</label>
+    <label><input type="checkbox" value="meds">High blood pressure or diabetes on medication</label>
+    <label><input type="checkbox" value="ed">History of an eating disorder</label>
+  </div>
+  <div id="womenBox" class="hide"><label>Pregnancy (optional)</label><select id="women"><option value="">Not relevant</option><option value="pregnant">Pregnant</option><option value="postpartum">Had a baby in the last 12 months</option><option value="breastfeeding">Breastfeeding</option></select></div>
+  <label>Injuries or pain to work around</label><input type="text" id="injuries" placeholder="e.g. left knee pain on lunges, lower back – or leave empty">
+  <div id="healthWarn" class="box warn small hide">Please get your doctor's (or midwife's / physio's) OK before starting. FitBull will keep your plan gentle: fewer sets, moderate weights, no calorie deficit where it matters.</div>
+</section>
+
+<!-- 4 goal & training -->
+<section data-s="4" class="hide">
+  <h2>Goal and training</h2>
+  <label>Main goal</label><select id="goal"><option value="fat">Lose fat</option><option value="recomp">Lose fat and build muscle</option><option value="muscle">Build muscle</option><option value="strength">Get stronger</option><option value="run">Get fitter for running</option><option value="health">Stay fit and healthy</option></select>
+  <label>A target? (optional)</label><input type="text" id="target" placeholder="e.g. lose 5 kg, waist 80 cm, run 5 km in 30 min">
+  <label>Lifting experience</label><select id="experience"><option value="beginner">New, or less than 6 months</option><option value="intermediate">6 months – 2 years, consistently</option><option value="advanced">2+ years, consistently</option></select>
+  <label>Where do you train?</label><select id="where"><option value="gym">A gym</option><option value="dumbbells">At home with dumbbells</option><option value="bodyweight">At home, no equipment</option></select>
+  <label>Which days can you train?</label><div class="chips" id="gymDays"></div>
+  <label>How long per session?</label><select id="minutes"><option value="30">30 minutes</option><option value="45" selected>45 minutes</option><option value="60">60 minutes</option><option value="75">75 minutes</option></select>
+  <label>At home for busy days you have…</label><div class="chips" id="homeEquip">
+    <label><input type="checkbox" value="bodyweight" checked>Nothing (bodyweight)</label><label><input type="checkbox" value="dumbbells">Dumbbells</label><label><input type="checkbox" value="band">Resistance band</label></div>
+</section>
+
+<!-- 5 activities + running -->
+<section data-s="5" class="hide">
+  <h2>Other activities</h2>
+  <p class="small mut">Classes, sports, swimming, yoga, walking… FitBull adds the calories and plans around them.</p>
+  <div id="acts"></div><button class="sec" id="addAct" type="button">+ Add an activity</button>
+  <h2 style="margin-top:16px">Running</h2>
+  <label>Do you run?</label><select id="runGoal"><option value="none">No</option><option value="general">Yes – for general fitness</option><option value="5k">Training for 5 km</option><option value="10k">Training for 10 km</option><option value="half">Half marathon</option><option value="marathon">Marathon</option></select>
+  <div id="runBox" class="hide">
+    <div class="row"><div><label>Runs per week</label><select id="runPer"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div><label>km per week now</label><input type="number" id="runKm" placeholder="e.g. 10"></div></div>
+    <div class="row"><div><label>Longest recent run (km)</label><input type="number" id="runLong" placeholder="e.g. 5"></div><div><label>Recent 5 km time (min, optional)</label><input type="number" id="run5k" placeholder="e.g. 32"></div></div>
+    <label>Preferred run days</label><div class="chips" id="runDays"></div>
+  </div>
+</section>
+
+<!-- 6 food -->
+<section data-s="6" class="hide">
+  <h2>Food</h2>
+  <div class="row"><div><label>Diet</label><select id="diet"><option value="nonveg">Non-vegetarian</option><option value="veg">Vegetarian</option><option value="egg">Vegetarian + eggs</option><option value="vegan">Vegan</option><option value="pesc">Pescatarian</option><option value="halal">Halal</option></select></div>
+    <div><label>Cuisine you mostly eat</label><input type="text" id="cuisine" placeholder="e.g. South Indian, Irish, Italian"></div></div>
+  <label>Foods you eat often</label><textarea id="foods" placeholder="e.g. idli, dosa, chapathi, dal, paneer, eggs, chicken, oats, rice, yogurt, fruit"></textarea>
+  <label>Foods you avoid or are allergic to</label><input type="text" id="avoid" placeholder="e.g. peanuts, beef – or leave empty">
+  <label class="chips" style="margin-top:12px"><label><input type="checkbox" id="powder">I use protein powder</label></label>
+</section>
+
+<!-- 7 routine -->
+<section data-s="7" class="hide">
+  <h2>Your day</h2>
+  <div class="row"><div><label>Usual wake-up time</label><select id="wakeHour"></select><p class="small mut">Your daily plan email arrives at this time.</p></div>
+    <div><label>Usual bedtime</label><select id="bedHour"></select><p class="small mut">The coach checks in 2 hours before.</p></div></div>
+  <label>Email for your plan and reviews</label><input type="text" id="email" readonly>
+</section>
+
+<!-- 8 review -->
+<section data-s="8" class="hide">
+  <h2>Your plan</h2>
+  <div id="review" class="mut">Building your plan…</div>
+</section>
+
+<!-- 9 finish -->
+<section data-s="9" class="hide">
+  <h2 id="finTitle">Setting everything up…</h2>
+  <div id="finBody" class="mut">Saving your plan, building your tabs, scheduling emails and publishing your app. About 20 seconds.</div>
+</section>
+</div>
+<div class="btns"><button class="sec" id="back">Back</button><button class="pri" id="next">Start</button></div>
+
+<script>
+var S = 0, LAST = 9, state = {}, built = null, keyOk = false;
+var DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function dayChips(el, name){ el.innerHTML = DAYS.map(function(d){ return '<label><input type="checkbox" value="'+d+'" name="'+name+'">'+d+'</label>'; }).join(''); }
+function checked(sel){ return [].slice.call(document.querySelectorAll(sel+' input:checked')).map(function(x){ return x.value; }); }
+function setChecked(sel, vals){ [].slice.call(document.querySelectorAll(sel+' input')).forEach(function(x){ x.checked = (vals||[]).indexOf(x.value) >= 0; }); paint(); }
+function paint(){ [].slice.call(document.querySelectorAll('.chips label')).forEach(function(l){ var i = l.querySelector('input'); if (i) l.classList.toggle('on', i.checked); }); }
+document.addEventListener('change', function(e){ if (e.target.type === 'checkbox') paint(); if (e.target.id === 'sex') $('womenBox').classList.toggle('hide', $('sex').value !== 'female');
+  if (e.target.id === 'runGoal') $('runBox').classList.toggle('hide', $('runGoal').value === 'none'); healthNote(); });
+function healthNote(){ var h = checked('#healthChips'); $('healthWarn').classList.toggle('hide', !(h.indexOf('heart')>=0 || h.indexOf('faint')>=0 || h.indexOf('meds')>=0 || ($('women').value && $('sex').value === 'female'))); }
+dayChips($('gymDays'), 'gym'); dayChips($('runDays'), 'run');
+for (var hh = 4; hh <= 11; hh++) $('wakeHour').innerHTML += '<option value="'+hh+'"'+(hh===7?' selected':'')+'>'+hh+':00</option>';
+for (var bh = 20; bh <= 24; bh++) $('bedHour').innerHTML += '<option value="'+bh+'"'+(bh===23?' selected':'')+'>'+(bh===24?'00':bh)+':00</option>';
+function actRow(a){ a = a || {}; var d = document.createElement('div'); d.className = 'act';
+  d.innerHTML = '<div class="row"><input type="text" class="an" placeholder="e.g. Zumba, Badminton, Yoga" value="'+esc(a.name||'')+'"><select class="aw"><option value="evening">Evening</option><option value="morning"'+(a.when==='morning'?' selected':'')+'>Morning</option></select><input type="number" class="am" placeholder="minutes" value="'+esc(a.minutes||'')+'" style="max-width:110px"></div><div class="chips ad" style="margin-top:6px"></div>';
+  dayChips(d.querySelector('.ad'), 'act'); [].slice.call(d.querySelectorAll('.ad input')).forEach(function(x){ x.checked = (a.days||[]).indexOf(x.value) >= 0; });
+  $('acts').appendChild(d); paint(); }
+$('addAct').onclick = function(){ if ($('acts').children.length < 4) actRow(); };
+
+function collect(){
+  var acts = [].slice.call(document.querySelectorAll('#acts .act')).map(function(d){ return { name: d.querySelector('.an').value.trim(), when: d.querySelector('.aw').value, minutes: Number(d.querySelector('.am').value)||45,
+    days: [].slice.call(d.querySelectorAll('.ad input:checked')).map(function(x){ return x.value; }) }; }).filter(function(a){ return a.name; });
+  var h = checked('#healthChips'), H = {}; h.forEach(function(x){ H[x] = true; });
+  return { name: $('name').value.trim(), sex: $('sex').value, age: Number($('age').value), heightCm: Number($('heightCm').value), weightKg: Number($('weightKg').value),
+    job: $('job').value, steps: Number($('steps').value), health: H, women: $('sex').value === 'female' ? $('women').value : '', injuries: $('injuries').value.trim(),
+    goal: $('goal').value, target: $('target').value.trim(), experience: $('experience').value, where: $('where').value, gymDays: checked('#gymDays'), minutes: Number($('minutes').value),
+    homeEquip: checked('#homeEquip'), activities: acts,
+    run: { goal: $('runGoal').value, perWeek: Number($('runPer').value), weeklyKm: Number($('runKm').value), longestKm: Number($('runLong').value), fiveK: Number($('run5k').value), days: checked('#runDays') },
+    diet: $('diet').value, cuisine: $('cuisine').value.trim(), foods: $('foods').value.trim(), avoid: $('avoid').value.trim(), powder: $('powder').checked,
+    wakeHour: Number($('wakeHour').value), bedHour: Number($('bedHour').value),
+    timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || '') };
+}
+function fill(a){ if (!a) return;
+  ['name','sex','age','heightCm','weightKg','job','steps','women','injuries','goal','target','experience','where','minutes','diet','cuisine','foods','avoid','wakeHour','bedHour'].forEach(function(k){ if (a[k] !== undefined && $(k)) $(k).value = a[k]; });
+  setChecked('#gymDays', a.gymDays); setChecked('#homeEquip', a.homeEquip); setChecked('#healthChips', Object.keys(a.health||{}));
+  if (a.run) { $('runGoal').value = a.run.goal || 'none'; $('runPer').value = a.run.perWeek || 2; $('runKm').value = a.run.weeklyKm || ''; $('runLong').value = a.run.longestKm || ''; $('run5k').value = a.run.fiveK || ''; setChecked('#runDays', a.run.days); }
+  $('powder').checked = !!a.powder; (a.activities||[]).forEach(actRow);
+  $('womenBox').classList.toggle('hide', $('sex').value !== 'female'); $('runBox').classList.toggle('hide', $('runGoal').value === 'none'); paint(); healthNote(); }
+
+function check(s){
+  var a = collect();
+  if (s === 2) { if (!a.name) return 'Please add your first name.'; if (!(a.age >= 18)) return 'FitBull is built for adults (18+).'; if (!(a.heightCm > 120 && a.heightCm < 230)) return 'Please add your height in cm (e.g. 172).'; if (!(a.weightKg > 35 && a.weightKg < 250)) return 'Please add your weight in kg (e.g. 70).'; }
+  if (s === 4 && !a.gymDays.length) return 'Pick at least one day you can train.';
+  if (s === 5 && a.run.goal !== 'none' && !a.run.days.length) return 'Pick your preferred run days.';
+  return '';
+}
+function show(s){
+  S = s; [].slice.call(document.querySelectorAll('section')).forEach(function(x){ x.classList.toggle('hide', Number(x.dataset.s) !== s); });
+  $('prog').style.width = Math.round(s / LAST * 100) + '%';
+  $('back').style.visibility = s > 0 && s < 9 ? 'visible' : 'hidden';
+  $('next').disabled = false;
+  $('next').textContent = s === 0 ? 'Start' : s === 1 ? (keyOk ? 'Next' : 'Skip for now') : s === 7 ? 'Build my plan' : s === 8 ? 'Looks good – set it up' : s === 9 ? 'Close' : 'Next';
+  if (s === 8) buildPlan(); if (s === 9) finish();
+  window.scrollTo(0, 0);
+}
+$('back').onclick = function(){ if (S > 0) show(S - 1); };
+$('next').onclick = function(){
+  if (S === 9) { google.script.host.close(); return; }
+  var err = check(S); var old = document.querySelector('section[data-s="'+S+'"] .err'); if (old) old.remove();
+  if (err) { var e = document.createElement('div'); e.className = 'err'; e.textContent = err; document.querySelector('section[data-s="'+S+'"]').appendChild(e); return; }
+  show(S + 1);
+};
+$('keyCheck').onclick = function(){ var b = this; b.disabled = true; $('keyMsg').textContent = 'Checking…';
+  google.script.run.withSuccessHandler(function(r){ b.disabled = false; keyOk = true; $('keyMsg').innerHTML = '<span class="ok">✓ Key works</span>'; $('next').textContent = 'Next'; })
+    .withFailureHandler(function(e){ b.disabled = false; $('keyMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }).webWizSaveKey($('key').value); };
+
+function buildPlan(){
+  $('next').disabled = true; $('review').innerHTML = '<p>Building your plan' + (keyOk || state.hasKey ? ' and meal buttons' : '') + '… (a few seconds)</p>';
+  google.script.run.withSuccessHandler(function(r){ built = r; var s = r.summary; $('next').disabled = false;
+      var h = '<table><tr><td><b>Calories</b></td><td>' + s.calories + ' kcal a day' + (s.weeklyChangeKg ? ' (aiming ' + (s.weeklyChangeKg > 0 ? '+' : '') + s.weeklyChangeKg + ' kg/week)' : ' (maintenance)') + '</td></tr>' +
+        '<tr><td><b>Protein</b></td><td>' + s.protein + ' g a day (at least ' + s.proteinMin + ' g)</td></tr><tr><td><b>Steps</b></td><td>' + s.steps.toLocaleString() + ' to start, rising gradually</td></tr>' +
+        (s.running ? '<tr><td><b>Running</b></td><td>' + esc(s.running) + '</td></tr>' : '') + '<tr><td><b>Week</b></td><td>' + s.week.map(esc).join('<br>') + '</td></tr></table>';
+      h += s.sessions.map(function(x){ return '<p style="margin-top:10px"><b>' + esc(x.name) + '</b><br><span class="small">' + x.exercises.map(esc).join(' · ') + '</span></p>'; }).join('');
+      h += '<p style="margin-top:10px"><b>One-tap meals</b><br><span class="small">' + (r.meals||[]).map(function(m){ return esc(m[0]) + ' (' + m[2] + ' g)'; }).join(' · ') + '</span></p>';
+      if (s.warnings.length) h += '<div class="box warn small">' + s.warnings.map(esc).join('<br>') + '</div>';
+      if (s.doctor) h += '<div class="box warn small">Please get your doctor\'s OK before you start. Your plan is set to gentle.</div>';
+      h += '<p class="small mut">Everything adjusts as you log: calories from your weight trend, weights from your sets. You can change answers later via FitBull ▸ Change my goals or plan.</p>';
+      $('review').innerHTML = h; })
+    .withFailureHandler(function(e){ $('review').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; }).webWizBuild(collect());
+}
+function manualStep(r){
+  $('finTitle').textContent = 'Last step: publish your app (1 minute)';
+  $('finBody').innerHTML = '<p>Your plan, tabs and emails are ready. Google needs you to publish the phone app yourself – 4 clicks:</p>' +
+    '<ol class="steps"><li>Open <a href="' + esc(r.scriptUrl || '#') + '" target="_blank"><b>your FitBull script</b></a> (or in the Sheet: Extensions → Apps Script).</li>' +
+    '<li>Top right: <b>Deploy → New deployment</b>.</li><li>Click the ⚙ gear next to "Select type" → <b>Web app</b>. Execute as: <b>Me</b>. Who has access: <b>Only myself</b>.</li>' +
+    '<li>Click <b>Deploy</b> (allow access if asked), then come back here and tap the button.</li></ol>' +
+    '<button class="pri" id="apiRetry">I\'ve published it – send me the link</button><div id="apiMsg" class="small"></div>';
+  $('next').textContent = 'Close';
+  $('apiRetry').onclick = function(){ var b = this; b.disabled = true; $('apiMsg').textContent = 'Checking…';
+    google.script.run.withSuccessHandler(function(x){ if (x.notYet) { b.disabled = false; $('apiMsg').innerHTML = '<span class="err">Not published yet – follow the 4 steps, then tap again.</span>'; } else done(x); })
+      .withFailureHandler(function(e){ b.disabled = false; $('apiMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }).webWizManualDone(); };
+}
+function done(r){
+  $('prog').style.width = '100%'; $('finTitle').textContent = '🎉 FitBull is ready';
+  $('finBody').innerHTML = '<p class="big">We\'ve emailed <b>' + esc(r.email || 'you') + '</b> a link to your app.</p><ol class="steps"><li>Open that email <b>on your phone</b> and tap <b>Open my app</b>.</li>' +
+    '<li>iPhone: Share → <b>Add to Home Screen</b>. Android: ⋮ → <b>Add to Home screen</b>.</li><li>Tomorrow morning: weigh in, then follow your plan email.</li></ol>' +
+    (r.appUrl ? '<p class="small">Or open it here: <a href="' + esc(r.appUrl) + '" target="_blank">' + esc(r.appUrl) + '</a></p>' : '');
+  $('next').textContent = 'Close';
+}
+function finish(){
+  $('next').disabled = true;
+  google.script.run.withSuccessHandler(function(r){ $('next').disabled = false; if (r.manual) manualStep(r); else done(r); })
+    .withFailureHandler(function(e){ $('next').disabled = false; $('finTitle').textContent = 'Something went wrong'; $('finBody').innerHTML = '<div class="err">' + esc(e.message) + '</div><p class="small">Tap Back to check your answers, or close and try FitBull ▸ Set up again.</p>'; $('back').style.visibility = 'visible'; })
+    .webWizFinish(collect(), built && built.meals);
+}
+google.script.run.withSuccessHandler(function(st){ state = st || {}; $('email').value = st.email || '';
+  if (st.hasKey) { keyOk = true; $('keyMsg').innerHTML = '<span class="ok">✓ Your key is already saved</span>'; }
+  if (st.answers) fill(st.answers);
+  if (st.configured) { document.querySelector('section[data-s="0"] h2').textContent = '✏️ Change your FitBull plan'; document.querySelector('section[data-s="0"] p').textContent = 'Update any answers and FitBull rebuilds your plan. Your logs, history and app link stay as they are.'; }
+}).webWizState();
+show(0);
+</script></body></html>
