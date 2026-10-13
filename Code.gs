@@ -1244,8 +1244,12 @@ function geminiCall_(body, needText, smart, budgetMs) {
   const remembered = smart ? props.getProperty('GEMINI_SMART_MODEL') : props.getProperty('GEMINI_MODEL');
   const list = smart ? CONFIG.SMART_MODELS : CONFIG.MODELS;
   // a remembered "lite" model never jumps the queue for smart calls – a stronger model may be free again
-  const models = remembered && !(smart && /lite/i.test(remembered)) ? [remembered].concat(list.filter(m => m !== remembered)) : list;
-  const tried = {};
+  let models = remembered && !(smart && /lite/i.test(remembered)) ? [remembered].concat(list.filter(m => m !== remembered)) : list;
+  // models whose free daily allowance ran out wait until it resets (each model has its own allowance)
+  let cool = {}; try { cool = JSON.parse(props.getProperty('GEMINI_COOL') || '{}'); } catch (e) {}
+  const nowMs = Date.now(), resting = models.filter(m => cool[m] && cool[m] > nowMs);
+  if (resting.length && resting.length < models.length) models = models.filter(m => !resting.includes(m)).concat(resting);
+  const tried = {}; let quotaHits = 0;
 
   for (let mi = 0; mi < models.length; mi++) {
     const model = models[mi];
@@ -1266,7 +1270,17 @@ function geminiCall_(body, needText, smart, budgetMs) {
         try { msg = JSON.parse(raw).error.message; } catch (e) {}
         lastGeminiError_ = `${model}: ${code} – ${msg}`;
         console.error('Gemini error ' + lastGeminiError_);
-        if (code === 400 || code === 401 || code === 429) return null;  // bad request / key / quota – other models won't help
+        if (code === 429) {
+          // a per-model limit (free tier, per minute or per day): park this model and try the next one
+          quotaHits++;
+          const secs = Number((String(msg).match(/retry in ([\d.]+)s/i) || [])[1]) || 0;
+          const perDay = /per.?day|PerDay|free_tier_requests/i.test(msg) && !/per.?minute/i.test(msg);
+          cool[model] = Date.now() + (perDay ? 6 * 3600e3 : Math.max(60, secs) * 1000);
+          try { props.setProperty('GEMINI_COOL', JSON.stringify(cool)); } catch (e) {}
+          lastGeminiError_ = 'Your free Gemini allowance is used up for now (' + model + ')';
+          continue;
+        }
+        if (code === 400 || code === 401) return null;  // bad request / key – other models won't help
         if (smart && (code === 503 || code === 500) && !tried[model] && (!deadline || Date.now() + 1500 < deadline)) { tried[model] = true; Utilities.sleep(1500); mi--; }  // busy: one retry
         continue;
       }
@@ -1282,6 +1296,7 @@ function geminiCall_(body, needText, smart, budgetMs) {
       console.error(e);
     }
   }
+  if (quotaHits) lastGeminiError_ = 'Today\'s free Gemini allowance is used up on every model – it resets within a day. You can still type foods in or pick a one-tap meal.';
   console.error('All Gemini models failed. Last error: ' + lastGeminiError_);
   return null;
 }
@@ -2030,7 +2045,7 @@ Reply with JSON only:
     generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
   };
   const text = geminiSmart_(body);
-  if (!text) throw new Error('Could not analyse the photo (' + (lastGeminiError_ || 'no reply') + '). Try again, or add the food by name.');
+  if (!text) throw new Error(/allowance/.test(lastGeminiError_) ? lastGeminiError_ : 'Could not analyse the photo (' + (lastGeminiError_ || 'no reply') + '). Try again, or add the food by name.');
   const m = text.match(/\{[\s\S]*\}/);
   let j;
   try { j = JSON.parse(m ? m[0] : text); } catch (e) { throw new Error('The photo reply was unclear – try again or add the food by name.'); }
@@ -2920,7 +2935,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-14.7';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-14.8';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;
