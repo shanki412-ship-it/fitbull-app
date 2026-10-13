@@ -18,6 +18,24 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
 main{max-width:560px;margin:0 auto;padding:12px 14px 96px}
 h1{font-size:26px;margin:4px 0 2px;letter-spacing:-.01em}
+.dtitle{border:0;background:none;color:var(--ink);font:inherit;text-align:center;padding:2px 4px;min-width:0;cursor:pointer}
+.dtitle .dt{display:block;font-size:19px;font-weight:700;line-height:1.25}
+.dtitle .ds{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr{position:absolute;left:50%;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.pbar{height:8px;border-radius:4px;background:var(--bg);margin-top:10px;overflow:hidden}.pbar i{display:block;height:8px;background:var(--green);border-radius:4px}
+details.fold>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{margin:0}
+details.fold>summary .hint{display:block;font-size:13px;color:var(--muted);font-weight:400;margin-top:2px}
+details.fold>summary::after{content:'\203A';font-size:24px;color:var(--muted);transition:transform .15s}
+details.fold[open]>summary::after{transform:rotate(90deg)}
+details.fold[open]>summary{margin-bottom:12px}
+.actrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}
+.actrow .btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:0}
+#meals.few .chip:nth-child(n+7){display:none}
+#suggestCard,#recentCard{display:none!important}
+.nextline{width:100%;border:0;background:none;color:var(--ink);font:inherit;text-align:left;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.nextline .chev{font-size:24px;color:var(--muted)}
 .brand{display:flex;align-items:center;gap:8px;margin:2px 0 6px;min-width:0}
 .brand img{width:26px;height:26px;border-radius:7px;flex:none}
 .brand b{font-size:15px;letter-spacing:.01em}
@@ -80,8 +98,11 @@ button{font:inherit;cursor:pointer}
 .big{font-size:28px;font-weight:700;line-height:1}
 .stat .v{font-size:24px;font-weight:700;line-height:1.1}
 .stat .l{font-size:12px;color:var(--muted)}
-.check{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+.check{display:flex;flex-wrap:wrap;gap:8px}
 .check div{display:flex;gap:8px;align-items:center;font-size:14px}
+.check .go{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+.check .go.ok{background:var(--okbg);border-color:transparent;color:var(--green);font-weight:600}
+.check .go .muted{font-weight:400}
 .check i{font-style:normal;width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;border:2px solid var(--line);flex:none}
 .check i.ok{background:var(--green);border-color:var(--green);color:#fff}
 .banner{border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0}
@@ -185,7 +206,8 @@ table.t td,table.t th{padding:7px 4px;border-top:1px solid var(--line);text-alig
 table.t th{font-size:12px;color:var(--muted);font-weight:600;border-top:0}
 table.t td.r,table.t th.r{text-align:right}
 nav{position:sticky;top:0;z-index:20;margin:0 -14px 10px;display:flex;justify-content:center;background:var(--card);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
-nav button{flex:1;max-width:120px;border:0;background:none;padding:13px 0 11px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;font-size:14px}
+nav button{flex:1;max-width:120px;border:0;background:none;padding:8px 0 6px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
@@ -230,7 +252,7 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
 #shareSave{display:flex;align-items:center;justify-content:center;text-decoration:none}
 #shareText{display:block;text-align:center;margin-top:12px;color:var(--accent)}
 /* date nav */
-.datenav{display:grid;grid-template-columns:44px 1fr 44px auto;gap:6px;align-items:center;margin-top:10px}
+.datenav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px auto;gap:6px;align-items:center;margin:4px 0 12px}
 .datenav .nb{height:44px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font-size:18px;font-weight:700}
 .datenav .nb:disabled{opacity:.35}
 .datenav input{padding:9px 10px;text-align:center}
@@ -269,21 +291,20 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
 <main>
 <div class="brand"><img id="brandLogo" alt=""><b id="brandName">FitBull</b><span id="brandTag">Strong habits. Smarter training.</span></div>
 <nav>
-  <button data-tab="checkin" class="on">Check-in</button>
-  <button data-tab="food">Food</button>
-  <button data-tab="gym">Gym</button>
-  <button data-tab="progress">Progress</button>
-  <button data-tab="coach">Coach<span class="dot" id="coachDot" hidden></span></button>
+  <button data-tab="checkin" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Check-in</button>
+  <button data-tab="food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1-3 4-3 7s1 4 3 4"/></svg>Food</button>
+  <button data-tab="gym"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7v10M3 9.5v5M18 7v10M21 9.5v5M6 12h12"/></svg>Gym</button>
+  <button data-tab="progress"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M6 16v-4M11 16V8M16 16v-6M20 6l-4 4-5-3-5 4"/></svg>Progress</button>
+  <button data-tab="coach"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Coach<span class="dot" id="coachDot" hidden></span></button>
 </nav>
-  <div>
-    <h1 id="title">Loading…</h1>
-    <div class="muted small" id="subtitle"></div>
+  <div style="position:relative">
     <div class="datenav">
-      <button class="nb" id="prevDay" aria-label="Previous day">◀</button>
-      <input type="date" id="date" aria-label="Date">
-      <button class="nb" id="nextDay" aria-label="Next day">▶</button>
+      <button class="nb" id="prevDay" aria-label="Previous day">‹</button>
+      <button class="dtitle" id="dateBtn" aria-label="Pick a date"><span class="dt" id="title">Loading…</span><span class="ds" id="subtitle"></span></button>
+      <button class="nb" id="nextDay" aria-label="Next day">›</button>
       <button class="today" id="goToday" hidden>Today</button>
     </div>
+    <input type="date" id="date" aria-label="Date" class="sr" tabindex="-1">
   </div>
 
   <!-- CHECK-IN -->
@@ -299,18 +320,19 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
     <div class="banner ok" id="catchBanner" hidden></div>
     <div class="card">
       <div class="row between"><h2 style="margin:0">Today</h2><span class="small muted" id="checkCount"></span></div>
-      <div class="check" id="checklist" style="margin-top:10px"></div>
+      <div class="pbar"><i id="checkBar" style="width:0"></i></div>
+      <div class="check" id="checklist" style="margin-top:12px"></div>
     </div>
-    <div class="card nextw" id="nextCard" hidden></div>
-    <div class="card">
-      <h2>Morning</h2>
+    <details class="card fold" id="mornCard" open>
+      <summary><span><h2>Morning</h2><span class="hint" id="mornHint">Weight and sleep</span></span></summary>
       <div class="grid2">
         <div><label for="w">Weight (kg)</label><input id="w" inputmode="decimal" placeholder="e.g. 74.8"></div>
         <div><label for="sl">Sleep last night (h)</label><input id="sl" inputmode="decimal" placeholder="e.g. 6.5"></div>
       </div>
-    </div>
-    <div class="card">
-      <h2>Evening</h2>
+      <button class="btn" id="saveMorning" style="margin-top:12px">Save</button>
+    </details>
+    <details class="card fold" id="eveCard">
+      <summary><span><h2>Evening</h2><span class="hint" id="eveHint">Steps, sport, how you feel</span></span></summary>
       <div class="grid2">
         <div><label for="st">Steps</label><input id="st" inputmode="numeric" placeholder="from Garmin"></div>
         <div><label for="wa">Waist (cm, weekly)</label><input id="wa" inputmode="decimal" placeholder="Sunday"></div>
@@ -324,8 +346,9 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
       <div class="small muted" id="tomorrowPlan" style="margin-top:6px"></div>
       <label for="nt" style="margin-top:10px">Notes</label>
       <textarea id="nt" placeholder="anything worth remembering"></textarea>
-    </div>
-    <button class="btn" id="saveDaily">Save check-in</button>
+      <button class="btn" id="saveDaily" style="margin-top:12px">Save check-in</button>
+    </details>
+    <div class="card" id="nextCard" hidden style="padding:0"></div>
   </section>
 
   <!-- FOOD -->
@@ -345,41 +368,18 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
           <div class="muted small" id="kLeft"></div>
         </div>
       </div>
-      <div class="minis">
+      <div class="small muted" id="fsLine" style="margin-top:10px"></div>
+      <div class="minis" hidden>
         <div class="mini"><div class="muted small">Fat</div><div class="v" id="fTxt">0 g</div>
           <div class="bar"><i id="fBar" style="width:0;background:var(--yellow)"></i></div><div class="muted small" id="fLeft"></div></div>
         <div class="mini"><div class="muted small">Sugar</div><div class="v" id="sTxt">0 g</div>
           <div class="bar"><i id="sBar" style="width:0;background:var(--yellow)"></i></div><div class="muted small" id="sLeft"></div></div>
       </div>
     </div>
-    <div class="mealwrap">
-      <div class="small muted" id="mealHint">Adding to</div>
-      <div class="seg" id="mealPick" role="radiogroup" aria-label="Which meal are you adding to?">
-        <button data-m="Morning" role="radio">Morning</button><button data-m="Afternoon" role="radio">Afternoon</button><button data-m="Evening" role="radio">Evening</button><button data-m="Night" role="radio">Night</button>
-      </div>
+    <div class="actrow">
+      <button class="btn" id="showOther"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add food</button>
+      <button class="btn ghost" id="uploadBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo</button>
     </div>
-    <div class="card" id="suggestCard" hidden>
-      <h2 style="margin-bottom:4px">Suggested next</h2>
-      <div class="small muted" id="suggestWhy"></div>
-      <div class="chips" id="suggest" style="margin-top:8px"></div>
-    </div>
-    <button class="btn ghost" id="copyY" hidden></button>
-    <div class="card" id="recentCard" hidden>
-      <h2>Recent</h2>
-      <div class="chips" id="recent"></div>
-    </div>
-    <div class="card">
-      <h2>One-tap meals</h2>
-      <div class="chips" id="meals"></div>
-      <p class="muted small" style="margin:10px 0 0">Tapping a meal <b>adds it straight away</b>. Green = already added today.</p>
-    </div>
-    <div class="grid2">
-      <button class="btn ghost" id="snapBtn">📷 Take a photo</button>
-      <button class="btn ghost" id="uploadBtn">🖼 Upload a photo</button>
-    </div>
-    <button class="btn ghost" id="showOther" style="margin-top:10px">+ Type a food</button>
-    <input type="file" id="snapInput" accept="image/*" capture="environment" hidden>
-    <input type="file" id="uploadInput" accept="image/*" hidden>
     <div class="card" id="photoCard" hidden>
       <div class="row between" style="align-items:baseline"><h2>From your photo</h2><button class="ibtn" id="photoClose">Close</button></div>
       <img id="photoThumb" class="ph-thumb" alt="Your meal photo">
@@ -405,9 +405,33 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
       <p class="muted small" style="margin:8px 0 12px">Leave the numbers blank and the coach will estimate them.</p>
       <button class="btn" id="addFood">Add food</button>
     </div>
+    <div class="mealwrap">
+      <div class="small muted" id="mealHint">Adding to</div>
+      <div class="seg" id="mealPick" role="radiogroup" aria-label="Which meal are you adding to?">
+        <button data-m="Morning" role="radio">Morning</button><button data-m="Afternoon" role="radio">Afternoon</button><button data-m="Evening" role="radio">Evening</button><button data-m="Night" role="radio">Night</button>
+      </div>
+    </div>
+    <div class="card" id="suggestCard" hidden>
+      <h2 style="margin-bottom:4px">Suggested next</h2>
+      <div class="small muted" id="suggestWhy"></div>
+      <div class="chips" id="suggest" style="margin-top:8px"></div>
+    </div>
+    <button class="btn ghost" id="copyY" hidden></button>
+    <div class="card" id="recentCard" hidden>
+      <h2>Recent</h2>
+      <div class="chips" id="recent"></div>
+    </div>
+    <button id="snapBtn" hidden></button>
+    <input type="file" id="snapInput" accept="image/*" capture="environment" hidden>
+    <input type="file" id="uploadInput" accept="image/*" hidden>
     <div class="card">
-      <h2>Added today</h2>
+      <h2>Eaten today</h2>
       <div id="foodList"></div>
+    </div>
+    <div class="card">
+      <div class="row between" style="align-items:baseline"><h2 style="margin:0">Quick add</h2><button class="ibtn" id="mealsAll" hidden>See all</button></div>
+      <div class="chips few" id="meals" style="margin-top:10px"></div>
+      <p class="muted small" style="margin:10px 0 0">Tap to add it straight away. Green = already added today.</p>
     </div>
   </section>
 
@@ -690,10 +714,13 @@ function setupStatic(d){
   MEAL_NAMES = new Set(MEALS.map(m => String(m[0]).toLowerCase()));
   $('meals').innerHTML = MEALS.map((m,i) => '<button class="chip" data-i="'+i+'">'+esc(m[0])+' <span class="muted">'+m[2]+'g</span><span class="n" hidden></span></button>').join('')
     || '<div class="empty">Add your usual meals to Config.gs to get one-tap buttons here.</div>';
+  $('mealsAll').hidden = MEALS.length <= 6;
+  $('mealsAll').textContent = 'See all (' + MEALS.length + ')';
+  $('mealsAll').onclick = () => { const few = $('meals').classList.toggle('few'); $('mealsAll').textContent = few ? 'See all (' + MEALS.length + ')' : 'Show fewer'; };
   $('meals').querySelectorAll('.chip').forEach(c => c.onclick = () => {
     const m = MEALS[c.dataset.i];
     c.disabled = true; c.classList.add('added');
-    run().withSuccessHandler(r => { applyFood(r); c.disabled=false; toast('Added ' + m[0] + ' to ' + curMeal() + ' – remove it under "Added today"'); })
+    run().withSuccessHandler(r => { applyFood(r); c.disabled=false; toast('Added ' + m[0] + ' to ' + curMeal() + ' – remove it under "Eaten today"'); })
       .withFailureHandler(e => { c.disabled=false; renderFood(); fail(e); })
       .webAddFood(day.date, m[1], m[2], m[0], 'meal', m[3], m[4], curMeal());
   });
@@ -714,7 +741,8 @@ function render(d, fromCache){
   day = d;
   if (!fromCache) cacheDay(d);
   $('date').value = d.date;
-  $('title').textContent = niceDate(d.date, {weekday:'long', day:'numeric', month:'short'});
+  $('title').textContent = niceDate(d.date, {weekday:'short', day:'numeric', month:'short'});
+  setFolds();
   const rd = d.readiness || {};
   $('subtitle').textContent = 'Week ' + d.weekNum + (d.deload ? ' (deload)' : '') + ' · ' +
     (d.scheduled && !rd.rest ? d.scheduled + (rd.title ? ' (' + rd.mode.replace('-', ' ') + ')' : '') : (rd.rest ? 'Rest – ' + rd.title.toLowerCase() : d.restLabel)) +
@@ -759,8 +787,34 @@ function renderChecklist(){
     ['Gym', day.scheduled && !(day.readiness||{}).rest ? sets > 0 : true, day.scheduled && !(day.readiness||{}).rest ? (sets ? sets + ' sets done' : day.scheduled) : 'rest day'],
   ];
   $('checklist').innerHTML = items.map(([n, ok, v]) =>
-    '<div><i class="'+(ok?'ok':'')+'" aria-hidden="true">'+(ok?'✓':'')+'</i><span><b>'+n+'</b> <span class="muted">'+esc(v)+'</span></span></div>').join('');
-  $('checkCount').textContent = items.filter(i=>i[1]).length + ' of ' + items.length + ' done';
+    '<button class="go'+(ok?' ok':'')+'" data-go="'+n+'">'+(ok?'✓ ':'')+n+' <span class="muted">'+esc(v)+'</span></button>').join('');
+  $('checklist').querySelectorAll('.go').forEach(b => b.onclick = () => goTo(b.dataset.go));
+  const nOk = items.filter(i=>i[1]).length;
+  $('checkCount').textContent = nOk + ' of ' + items.length + ' done';
+  $('checkBar').style.width = Math.round(100 * nOk / items.length) + '%';
+  const L2 = day.log || {};
+  $('mornHint').textContent = L2['Weight kg'] ? L2['Weight kg'] + ' kg' + (L2['Sleep h'] ? ' · ' + L2['Sleep h'] + ' h sleep' : '') + ' – saved' : 'Weight and sleep';
+  $('eveHint').textContent = L2['Steps'] || L2['Activity'] ? [L2['Steps'] ? Number(L2['Steps']).toLocaleString() + ' steps' : '', L2['Activity'] || ''].filter(Boolean).join(' · ') + ' – saved' : 'Steps, sport, how you feel';
+}
+// tap a checklist item → go to the box for it
+function goTo(n){
+  const tab = t => document.querySelector('nav button[data-tab="'+t+'"]').click();
+  if (n === 'Protein' || n === 'Calories') return tab('food');
+  if (n === 'Gym') return tab('gym');
+  const f = n === 'Weight' ? 'w' : n === 'Sleep' ? 'sl' : 'st';
+  const card = f === 'st' ? $('eveCard') : $('mornCard');
+  card.open = true;
+  setTimeout(() => { $(f).scrollIntoView && $(f).scrollIntoView({ behavior: 'smooth', block: 'center' }); $(f).focus(); }, 50);
+}
+// morning questions in the morning, evening ones from 4 pm (opened once per day you look at; you can still tap either)
+let foldDate = '';
+function setFolds(){
+  if (!day || foldDate === day.date) return;
+  foldDate = day.date;
+  const isToday = day.date === todayStr(), late = new Date().getHours() >= 16, L = day.log || {};
+  if (!isToday) { $('mornCard').open = true; $('eveCard').open = true; return; }
+  $('eveCard').open = late;
+  $('mornCard').open = !late || !L['Weight kg'];
 }
 
 // ---------------------------------------------------------------- tabs
@@ -817,6 +871,8 @@ $('prevDay').onclick = () => { if (day) load(shiftDate(day.date, -1)); };
 const MAX_AHEAD = 7;
 $('nextDay').onclick = () => { if (day && day.date < shiftDate(todayStr(), MAX_AHEAD)) load(shiftDate(day.date, 1)); };
 $('goToday').onclick = () => load(todayStr());
+$('dateBtn').onclick = () => { const i = $('date'); try { if (i.showPicker) { i.showPicker(); return; } } catch (e) {} i.focus(); i.click(); };
+$('saveMorning').onclick = () => $('saveDaily').click();
 function paintDateNav(){
   const isToday = day && day.date === todayStr();
   $('nextDay').disabled = !day || day.date >= shiftDate(todayStr(), MAX_AHEAD);
@@ -927,6 +983,7 @@ function renderFood(){
   const missing = foods.filter(x => x.source !== 'pending' && (x.fat === null || x.sugar === null)).length;
   const fg = t.fatGuide || Math.round(70*t.kcal/2000), sg = t.sugarGuide || Math.round(90*t.kcal/2000);
   $('fTxt').textContent = fa + ' g'; $('sTxt').textContent = su + ' g';
+  $('fsLine').textContent = 'Fat ' + fa + ' g' + (fa > fg ? ' (over ~' + fg + ')' : '') + ' · Sugar ' + su + ' g' + (su > sg ? ' (over ~' + sg + ')' : '');
   $('fBar').style.width = Math.min(100, fa / fg * 100) + '%'; $('sBar').style.width = Math.min(100, su / sg * 100) + '%';
   $('fBar').style.background = fa > fg ? 'var(--red)' : 'var(--yellow)'; $('sBar').style.background = su > sg ? 'var(--red)' : 'var(--yellow)';
   $('fLeft').textContent = (fa > fg ? (fa - fg) + ' g over' : 'guide ~' + fg + ' g') + (missing ? ' · ' + missing + ' item' + (missing===1?'':'s') + ' without fat/sugar' : '');
@@ -1548,7 +1605,9 @@ function renderNext(){
     '<button class="ibtn" id="nextView" style="margin-top:10px">See it in full ▶</button>' : '';
   const scheduledToday = !!day.scheduled && !(day.readiness && day.readiness.rest) && !day.skipped;
   const trainedToday = (day.setsToday || []).length > 0;
-  $('nextCard').hidden = !n; $('nextCard').innerHTML = html;
+  // Check-in shows it as one line; the Gym tab keeps the full list
+  $('nextCard').hidden = !n;
+  $('nextCard').innerHTML = n ? '<button class="nextline" id="nextView"><span><b>'+esc(n.inDays === 1 ? 'Tomorrow' : niceDate(n.date, {weekday:'long'}))+': '+esc(n.session)+'</b><br><span class="small muted">'+n.exercises.length+' exercises · '+esc(niceDate(n.date, {day:'numeric', month:'short'}))+'</span></span><span class="chev">›</span></button>' : '';
   $('nextCardGym').hidden = !n || (scheduledToday && !trainedToday && !day.isFuture); $('nextCardGym').innerHTML = html.replace('id="nextView"', 'id="nextView2"');
   [$('nextView'), $('nextView2')].forEach(b => b && (b.onclick = () => { load(n.date); document.querySelector('nav button[data-tab="gym"]').click(); }));
 }
