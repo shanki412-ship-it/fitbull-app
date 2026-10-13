@@ -206,16 +206,20 @@ function buildPlan(){
     .withFailureHandler(function(e){ $('review').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; }).webWizBuild(collect());
 }
 function manualStep(r){
-  $('finTitle').textContent = 'Last step: publish your app (1 minute)';
-  $('finBody').innerHTML = '<p>Your plan, tabs and emails are ready. Google needs you to publish the phone app yourself – 4 clicks:</p>' +
+  $('finTitle').textContent = 'Last step: get your app link (1 minute)';
+  $('finBody').innerHTML = '<p>Your plan, tabs and emails are ready. Google needs you to make your own app link once:</p>' +
     '<ol class="steps"><li>Open <a href="' + esc(r.scriptUrl || '#') + '" target="_blank"><b>your FitBull script</b></a> (or in the Sheet: Extensions → Apps Script).</li>' +
-    '<li>Top right: <b>Deploy → New deployment</b>.</li><li>Click the ⚙ gear next to "Select type" → <b>Web app</b>. Execute as: <b>Me</b>. Who has access: <b>Only myself</b>.</li>' +
-    '<li>Click <b>Deploy</b> (allow access if asked), then come back here and tap the button.</li></ol>' +
-    '<button class="pri" id="apiRetry">I\'ve published it – send me the link</button><div id="apiMsg" class="small"></div>';
+    '<li>Top right: <b>Deploy → Test deployments</b>.</li><li>Next to <b>Web app URL</b> click <b>Copy</b> (it ends in <b>/dev</b>).</li>' +
+    '<li>Paste it here and tap the button.</li></ol>' +
+    '<input id="appLink" placeholder="https://script.google.com/macros/s/…/dev" autocomplete="off">' +
+    '<button class="pri" id="apiRetry" style="margin-top:8px">Save my link and email it to me</button><div id="apiMsg" class="small"></div>' +
+    '<p class="small mut">This link always runs the newest FitBull, so updates reach you automatically.</p>';
   $('next').textContent = 'Close';
-  $('apiRetry').onclick = function(){ var b = this; b.disabled = true; $('apiMsg').textContent = 'Checking…';
-    google.script.run.withSuccessHandler(function(x){ if (x.notYet) { b.disabled = false; $('apiMsg').innerHTML = '<span class="err">Not published yet – follow the 4 steps, then tap again.</span>'; } else done(x); })
-      .withFailureHandler(function(e){ b.disabled = false; $('apiMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }).webWizManualDone(); };
+  $('apiRetry').onclick = function(){ var b = this, v = $('appLink').value.trim();
+    if (!v) { $('apiMsg').innerHTML = '<span class="err">Paste the Web app URL first.</span>'; return; }
+    b.disabled = true; $('apiMsg').textContent = 'Saving…';
+    google.script.run.withSuccessHandler(function(x){ if (x.notYet) { b.disabled = false; $('apiMsg').innerHTML = '<span class="err">That didn\'t work – copy the Web app URL again.</span>'; } else done(x); })
+      .withFailureHandler(function(e){ b.disabled = false; $('apiMsg').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }).webWizManualDone(v); };
 }
 function done(r){
   $('prog').style.width = '100%'; $('finTitle').textContent = '🎉 FitBull is ready';

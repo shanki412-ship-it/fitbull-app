@@ -212,7 +212,23 @@ function webWizSaveKey(key) {
   if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error('That has characters a key never has – copy it again with the Copy button on aistudio.google.com/apikey.');
   const p = PropertiesService.getScriptProperties(), old = p.getProperty('GEMINI_API_KEY');
   p.setProperty('GEMINI_API_KEY', key); p.deleteProperty('GEMINI_MODEL'); p.deleteProperty('GEMINI_SMART_MODEL');
-  const ok = !!callGemini_('Reply with JSON only: {"ok": true}', true);
+  // quick check: one "list models" call (well under a second) instead of a full AI reply
+  let ok = false;
+  try {
+    const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
+      { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true });
+    if (res.getResponseCode() === 200) {
+      const have = ((JSON.parse(res.getContentText()).models) || []).map(m => String(m.name).replace(/^models\//, ''));
+      const pick = l => l.find(m => have.indexOf(m) >= 0);
+      if (pick(CONFIG.MODELS)) p.setProperty('GEMINI_MODEL', pick(CONFIG.MODELS));
+      if (pick(CONFIG.SMART_MODELS)) p.setProperty('GEMINI_SMART_MODEL', pick(CONFIG.SMART_MODELS));
+      ok = true;
+    } else {
+      let msg = res.getContentText(); try { msg = JSON.parse(msg).error.message; } catch (e) {}
+      lastGeminiError_ = res.getResponseCode() + ' – ' + msg;
+    }
+  } catch (e) { lastGeminiError_ = e.message; }
+  if (!ok && !/API key|PERMISSION|400|401|403/i.test(lastGeminiError_)) ok = !!callGemini_('Reply with JSON only: {"ok": true}', true);  // network hiccup: fall back to a real call
   if (!ok) { if (old) p.setProperty('GEMINI_API_KEY', old); else p.deleteProperty('GEMINI_API_KEY'); throw new Error('The key didn\'t work: ' + (lastGeminiError_ || 'no reply') + '. Copy it again from aistudio.google.com.'); }
   return { ok: true, model: p.getProperty('GEMINI_MODEL') || '' };
 }
@@ -256,11 +272,6 @@ function webWizRetryDeploy() { const r = wizDeploy_(); if (r.manual) return webW
 /** Publishes the phone app through the Apps Script API (needs the API switched on in the user's settings). */
 function wizDeploy_() {
   const id = ScriptApp.getScriptId(), p = PropertiesService.getScriptProperties();
-  // Sheets made by "New FitBull for a friend" already know their always-latest app link (Install.gs)
-  if (typeof FRIEND_APP_URL !== 'undefined' && FRIEND_APP_URL) {
-    p.setProperty('APP_URL', FRIEND_APP_URL); p.setProperty('WIZ_DEPLOYED', '1');
-    return { url: FRIEND_APP_URL };
-  }
   try {
     const existing = (scriptApi_('get', 'projects/' + id + '/deployments').deployments || [])
       .filter(d => d.deploymentConfig && d.deploymentConfig.versionNumber && (d.entryPoints || []).some(e => e.entryPointType === 'WEB_APP'));
@@ -281,13 +292,33 @@ function wizDeploy_() {
 }
 
 /** After the person clicked Deploy themselves: pick up the app link and send the welcome email. */
-function webWizManualDone() {
+function webWizManualDone(pasted) {
   const p = PropertiesService.getScriptProperties();
-  let url = ''; try { url = ScriptApp.getService().getUrl() || ''; } catch (e) {}
+  let url = '';
+  if (pasted) { url = cleanAppLink_(pasted); if (!url) throw new Error('That isn\'t an app link – copy the "Web app URL" (it starts with https://script.google.com/macros/s/).'); }
+  else { try { url = ScriptApp.getService().getUrl() || ''; } catch (e) {} }
   if (!url) return { notYet: true };
   p.setProperty('APP_URL', url); p.setProperty('WIZ_DEPLOYED', '1');
   if (!p.getProperty('SETUP_DONE')) { p.setProperty('SETUP_DONE', new Date().toISOString()); welcomeEmail_(url, !!p.getProperty('GEMINI_API_KEY'), ''); }
   return { ok: true, appUrl: url, email: getSettings_()['Email'] || '' };
+}
+/** Accepts a pasted web-app link (…/macros/s/<id>/dev or /exec); returns it tidied, or '' if it isn't one. */
+function cleanAppLink_(u) {
+  u = String(u || '').replace(/[\s"'<>]/g, '');
+  const m = u.match(/^https:\/\/script\.google\.com\/(?:a\/[^/]+\/)?macros\/s\/[A-Za-z0-9_-]{20,}\/(?:dev|exec)/);
+  return m ? m[0] : '';
+}
+/** Menu: paste your own app link (Deploy ▸ Test deployments ▸ Web app URL) so emails and "Open my app" use it. */
+function wizSetLink() {
+  const ui = SpreadsheetApp.getUi();
+  const r = ui.prompt('Your FitBull app link',
+    'In Extensions ▸ Apps Script click Deploy ▸ Test deployments, copy the Web app URL (ends in /dev) and paste it here.\n' +
+    'That link always runs the newest version, so updates reach you without redeploying.', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  const url = cleanAppLink_(r.getResponseText());
+  if (!url) { ui.alert('That isn\'t an app link – it should start with https://script.google.com/macros/s/'); return; }
+  PropertiesService.getScriptProperties().setProperty('APP_URL', url);
+  wizShowLink();
 }
 function setSetting_(name, value) {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.SETTINGS); if (!sh) return;
