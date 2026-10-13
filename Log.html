@@ -30,7 +30,8 @@ details.fold>summary .hint{display:block;font-size:13px;color:var(--muted);font-
 details.fold>summary::after{content:'\203A';font-size:24px;color:var(--muted);transition:transform .15s}
 details.fold[open]>summary::after{transform:rotate(90deg)}
 details.fold[open]>summary{margin-bottom:12px}
-.actrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}
+.actrow{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin:0 0 12px}
+.actrow .btn{padding-left:6px;padding-right:6px;font-size:15px;white-space:nowrap}
 .actrow .btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:0}
 #meals.few .chip:nth-child(n+7){display:none}
 #suggestCard,#recentCard{display:none!important}
@@ -378,7 +379,8 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
     </div>
     <div class="actrow">
       <button class="btn" id="showOther"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add food</button>
-      <button class="btn ghost" id="uploadBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo</button>
+      <button class="btn ghost" id="snapBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Camera</button>
+      <button class="btn ghost" id="uploadBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>Gallery</button>
     </div>
     <div class="card" id="photoCard" hidden>
       <div class="row between" style="align-items:baseline"><h2>From your photo</h2><button class="ibtn" id="photoClose">Close</button></div>
@@ -421,7 +423,6 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
       <h2>Recent</h2>
       <div class="chips" id="recent"></div>
     </div>
-    <button id="snapBtn" hidden></button>
     <input type="file" id="snapInput" accept="image/*" capture="environment" hidden>
     <input type="file" id="uploadInput" accept="image/*" hidden>
     <div class="card">
