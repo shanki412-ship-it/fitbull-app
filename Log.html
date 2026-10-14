@@ -131,6 +131,21 @@ button{font:inherit;cursor:pointer}
 #appFoot{text-align:center;margin:22px 0 4px;line-height:1.7}
 /* gym */
 .ex{border-top:1px solid var(--line);padding:14px 0}
+.exhead{width:100%;border:0;background:none;color:var(--ink);font:inherit;text-align:left;padding:0;display:flex;align-items:center;gap:10px;cursor:pointer}
+.exhead .em{flex:1;min-width:0}.exhead .em b{display:block;font-size:16px;color:var(--sub)}
+.exhead .es{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exhead .es.ok{color:var(--green);font-weight:600}
+.exhead .ch{font-size:20px;color:var(--muted);width:16px;text-align:center;transition:transform .15s}
+.ex.open .exhead .ch{transform:rotate(90deg)}
+.ex.closed .exbody{display:none}
+.exhead[hidden]{display:none}
+#exList.simple .exbody .ex-h b{display:none}
+#exList.simple .exbody .ex-h{justify-content:flex-start}
+.ex.open .exhead{margin-bottom:10px}
+.exdone{width:24px;height:24px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:13px;border:2px solid var(--line);color:transparent}
+.exdone.ok{background:var(--green);border-color:var(--green);color:#fff}
+.exdone.part{border-color:var(--green)}
+#gymViewRow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
 .ex:first-child{border-top:0;padding-top:2px}
 .ex-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .ex-h b{font-size:16px}
@@ -485,7 +500,11 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
           <div class="banner warn skipped" id="skipDone" hidden><span id="skipTxt"></span><button class="ibtn" id="skipUndo">Undo</button></div>
         </div>
       </div>
-      <div class="card" id="exList"></div>
+      <div class="card">
+        <div id="gymViewRow"><h2 style="margin:0">Exercises</h2>
+          <div class="seg mini" id="gymView" role="radiogroup" aria-label="How to show exercises"><button data-v="simple" role="radio">Simple</button><button data-v="detail" role="radio">Detailed</button></div></div>
+        <div id="exList"></div>
+      </div>
       <div class="card" id="extraCard">
         <h2 style="margin:0 0 4px">Extra exercise <span class="small muted" style="font-weight:400">· if time permits</span></h2>
         <div class="row" style="gap:6px;margin-top:6px">
@@ -496,6 +515,17 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
         <datalist id="exNames"></datalist>
         <div class="chips" id="extraRecent" style="margin-top:8px"></div>
         <p class="small muted" style="margin:6px 0 0">It's added below your plan for today only and tracked with its own history – the app suggests the weight next time.</p>
+      </div>
+      <div class="card">
+        <h2>Finish session</h2>
+        <label>Pump</label>
+        <div class="chips fb" data-k="pump"><button class="chip" data-v="low">Low</button><button class="chip" data-v="ok">OK</button><button class="chip" data-v="great">Great</button></div>
+        <label style="margin-top:10px">Soreness from last time</label>
+        <div class="chips fb" data-k="soreness"><button class="chip" data-v="none">None</button><button class="chip" data-v="some">Some</button><button class="chip" data-v="still sore">Still sore</button></div>
+        <label style="margin-top:10px">Joint pain</label>
+        <div class="chips fb" data-k="jointPain"><button class="chip" data-v="N">No</button><button class="chip" data-v="Y">Yes</button></div>
+        <p class="muted small" style="margin:10px 0 12px">Each set is saved when you tick it. This just records how the session felt – the coach uses it to adjust your sets each week.</p>
+        <button class="btn" id="finish">Finish session</button>
       </div>
       <button class="btn ghost" id="shareOpen" hidden>📸 Share this workout</button>
       <div class="card" id="shareCard" hidden>
@@ -513,17 +543,6 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
       <input type="file" id="shareCamIn" accept="image/*" capture="user" hidden>
       <input type="file" id="shareUpIn" accept="image/*" hidden>
       <div class="card nextw" id="nextCardGym" hidden></div>
-      <div class="card">
-        <h2>Finish session</h2>
-        <label>Pump</label>
-        <div class="chips fb" data-k="pump"><button class="chip" data-v="low">Low</button><button class="chip" data-v="ok">OK</button><button class="chip" data-v="great">Great</button></div>
-        <label style="margin-top:10px">Soreness from last time</label>
-        <div class="chips fb" data-k="soreness"><button class="chip" data-v="none">None</button><button class="chip" data-v="some">Some</button><button class="chip" data-v="still sore">Still sore</button></div>
-        <label style="margin-top:10px">Joint pain</label>
-        <div class="chips fb" data-k="jointPain"><button class="chip" data-v="N">No</button><button class="chip" data-v="Y">Yes</button></div>
-        <p class="muted small" style="margin:10px 0 12px">Each set is saved when you tick it. This just records how the session felt – the coach uses it to adjust your sets each week.</p>
-        <button class="btn" id="finish">Finish session</button>
-      </div>
     </div>
     <div id="gym-history" hidden>
       <div class="card" id="histList"><div class="empty">Loading…</div></div>
@@ -1352,6 +1371,27 @@ function renderExtraBox(){
   $('extraRecent').querySelectorAll('[data-x]').forEach(b => b.onclick = () => addExtra(b.dataset.x));
   $('extraCard').hidden = !!day.isFuture;
 }
+// ----- simple / detailed exercise list (simple: each exercise one line, tap to open)
+const gymOpen = {};                                   // date|session → open exercise index
+const gymKey = () => (day ? day.date : '') + '|' + $('sess').value;
+function gymViewNow(){ return store.get('fb_gymview', 'simple'); }
+function exState(name, e){
+  const sets = []; for (let s = 1; s <= e.sets; s++) { const d = done[keyOf(name, e.exercise, s)]; if (d) sets.push(d); }
+  if (sets.length >= e.sets) { const kg = sets[0].kg; const same = sets.every(x => x.kg === kg);
+    return { cls: 'ok', text: (same && kg !== '' ? kg + ' kg × ' + sets.map(x => x.reps).join(', ') : sets.map(x => (x.kg !== '' ? x.kg + '×' : '') + x.reps).join(', ')) }; }
+  const plan = e.sets + ' × ' + e.reps + (e.target && e.target !== '—' ? ' · ' + e.target : ' · first time');
+  return sets.length ? { cls: 'part', text: sets.length + ' of ' + e.sets + ' sets · ' + plan } : { cls: '', text: plan };
+}
+function paintExHeads(list){
+  const name = $('sess').value;
+  $('exList').querySelectorAll('.ex[data-i]').forEach(el => {
+    const e = list[Number(el.dataset.i)]; if (!e) return; const st = exState(name, e);
+    const dot = el.querySelector('.exdone'), es = el.querySelector('.exhead .es');
+    if (dot) dot.className = 'exdone ' + st.cls; if (es) { es.textContent = st.text; es.classList.toggle('ok', st.cls === 'ok'); }
+  });
+}
+document.querySelectorAll('#gymView button').forEach(b => b.onclick = () => { store.set('fb_gymview', b.dataset.v); renderGym(); });
+
 function renderGym(){
   restoreExtras();
   updateShareBtn();
@@ -1377,13 +1417,19 @@ function renderGym(){
         '<button class="tick" data-ex="'+i+'" data-set="'+s+'" aria-label="Mark set '+s+' done">'+(dn ? (dn.synced?'✓':'⟳') : '✓')+'</button></div>';
     }
     const base = e.swappedFrom || e.exercise;
-    return '<div class="ex'+(e.extra?' extra':'')+'"><div class="ex-h"><b>'+esc(e.exercise)+(e.extra?' <span class="tag extra">extra</span>':'')+(e.swappedFrom?' <span class="swapped">instead of '+esc(e.swappedFrom)+'</span>':'')+'</b><span class="muted small">'+e.sets+' × '+esc(e.reps)+(rs?' · rest '+fmtSecs(rs):' · superset')+'</span></div>' +
+    const st = exState(name, e), open = gymViewNow() === 'detail' || gymOpen[gymKey()] === i;
+    return '<div class="ex'+(e.extra?' extra':'')+(open?' open':' closed')+'" data-i="'+i+'">' +
+      '<button class="exhead" data-exh="'+i+'" aria-expanded="'+open+'"'+(gymViewNow()==='detail'?' hidden':'')+'><span class="exdone '+st.cls+'" aria-hidden="true">✓</span><span class="em"><b>'+esc(e.exercise)+'</b><span class="es'+(st.cls==='ok'?' ok':'')+'">'+esc(st.text)+'</span></span><span class="ch" aria-hidden="true">›</span></button>' +
+      '<div class="exbody"><div class="ex-h"><b>'+esc(e.exercise)+(e.extra?' <span class="tag extra">extra</span>':'')+(e.swappedFrom?' <span class="swapped">instead of '+esc(e.swappedFrom)+'</span>':'')+'</b><span class="muted small">'+e.sets+' × '+esc(e.reps)+(rs?' · rest '+fmtSecs(rs):' · superset')+'</span></div>' +
       '<div class="target">Target: '+esc(e.target)+'</div>' + extra +
       '<div class="hint">Last: '+esc(e.last)+'</div>' +
       '<div class="exbtns">'+(e.extra ? '<button class="ibtn rm" data-rmx="'+esc(e.exercise)+'">✕ Remove</button>' : '<button class="ibtn" data-swap="'+i+'">⇄ Swap'+((e.alts||[]).length?'':' (none)')+'</button>')+'<button class="ibtn" data-how="'+i+'">ⓘ How to</button></div>' +
       '<div class="panel" data-swappanel="'+i+'" hidden></div><div class="panel" data-howpanel="'+i+'" hidden></div>' +
-      rows + '</div>';
+      rows + '</div></div>';
   }).join('') || '<div class="empty">No exercises for this session.</div>';
+  $('exList').classList.toggle('simple', gymViewNow() === 'simple');
+  document.querySelectorAll('#gymView button').forEach(b => { const on = b.dataset.v === gymViewNow(); b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+  $('exList').querySelectorAll('[data-exh]').forEach(b => b.onclick = () => { const i = Number(b.dataset.exh); gymOpen[gymKey()] = gymOpen[gymKey()] === i ? -1 : i; renderGym(); });
 
   // inputs → draft (so nothing typed is lost if the page reloads)
   $('exList').querySelectorAll('.setrow input').forEach(inp => inp.oninput = () => {
@@ -1475,6 +1521,7 @@ function paintSet(k){
 }
 
 function updateProgress(list){
+  try { paintExHeads(list); } catch (e) {}
   const name = $('sess').value;
   const total = list.reduce((a,e)=>a+e.sets,0);
   const n = Object.keys(done).filter(k => k.startsWith(name + '|')).length;
@@ -1502,6 +1549,11 @@ function toggleSet(btn, list){
   done[k] = { id: cid, kg: kg === '' ? '' : Number(kg), reps: Number(reps), synced: false };
   queue.push({ op: 'add', cid, date: day.date, session: name, exercise: e.exercise, set: s, kg: kg === '' ? '' : Number(kg), reps: Number(reps) });
   saveQueue(); paintSet(k); updateProgress(list); renderChecklist(); flush(); dashAt = 0;
+  // simple view: finished this exercise → fold it and open the next one
+  if (gymViewNow() === 'simple' && exState(name, e).cls === 'ok') {
+    const ni = Number(btn.dataset.ex) + 1;
+    setTimeout(() => { gymOpen[gymKey()] = ni < list.length ? ni : -1; renderGym(); }, 900);
+  }
 
   // rest timer: supersets go straight to the partner exercise
   const idx = Number(btn.dataset.ex), secs = restSecs(e.rest);
@@ -1574,8 +1626,8 @@ $('tMinus').onclick = () => { tEnd -= 15000; tickTimer(); };
 $('tSkip').onclick = stopTimer;
 
 // ---------------------------------------------------------------- history
-document.querySelectorAll('#tab-gym .seg button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#tab-gym .seg button').forEach(x => x.classList.toggle('on', x===b));
+document.querySelectorAll('#tab-gym .seg button[data-gv]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tab-gym .seg button[data-gv]').forEach(x => x.classList.toggle('on', x===b));
   $('gym-workout').hidden = b.dataset.gv !== 'workout';
   $('gym-history').hidden = b.dataset.gv !== 'history';
   $('gym-run').hidden = b.dataset.gv !== 'run';
