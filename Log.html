@@ -100,6 +100,14 @@ button{font:inherit;cursor:pointer}
 .mealhd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 0 2px;border-top:1px solid var(--line)}
 .mealhd:first-child{border-top:0;padding-top:0}
 .mealhd + .food{border-top:0}
+.seg.mini{margin:0;padding:2px;gap:2px;flex:none}.seg.mini button{padding:6px 10px;font-size:13px}
+.mealrow{width:100%;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:inherit;text-align:left;padding:12px 0;display:flex;align-items:center;gap:10px;cursor:pointer}
+#foodList .mealrow:first-child{border-top:0;padding-top:4px}
+.mealrow .mt{flex:1;min-width:0}.mealrow .mt>span{display:flex;justify-content:space-between;gap:8px}
+.mealrow .pv{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.mealrow .ch{font-size:20px;color:var(--muted);width:16px;text-align:center;transition:transform .15s}
+.mealrow[aria-expanded="true"] .ch{transform:rotate(90deg)}
+.mealbody{padding:0 0 10px}
 .empty{color:var(--muted);font-size:14px;padding:4px 0}
 .bar{height:10px;background:var(--bg);border-radius:6px;overflow:hidden;margin:6px 0 2px}
 .bar>i{display:block;height:100%;background:var(--green);border-radius:6px}
@@ -433,8 +441,9 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
     <input type="file" id="snapInput" accept="image/*" capture="environment" hidden>
     <input type="file" id="uploadInput" accept="image/*" hidden>
     <div class="card">
-      <h2>Eaten today</h2>
-      <div id="foodList"></div>
+      <div class="row between" style="align-items:center;gap:8px"><h2 style="margin:0">Eaten today</h2>
+        <div class="seg mini" id="foodView" role="radiogroup" aria-label="How to show what you ate"><button data-v="simple" role="radio">Simple</button><button data-v="detail" role="radio">Detailed</button></div></div>
+      <div id="foodList" style="margin-top:10px"></div>
     </div>
     <div class="card">
       <div class="row between" style="align-items:baseline"><h2 style="margin:0">Quick add</h2><button class="ibtn" id="mealsAll" hidden>See all</button></div>
@@ -841,6 +850,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   if (b.dataset.tab === 'coach') { renderChat(); loadAgentState(); }
   if (b.dataset.tab === 'progress') loadDash();
   if (b.dataset.tab === 'checkin') renderChecklist();
+  if (b.dataset.tab !== 'food' && photoDetail) { photoDetail = false; if (day) renderFood(); }
   window.scrollTo(0,0);
 });
 
@@ -992,6 +1002,17 @@ function renderMealPick(){
 }
 document.querySelectorAll('#mealPick button').forEach(b => b.onclick = () => { mealPicked[day.date] = b.dataset.m; renderFood(); });
 
+let photoDetail = false;                         // just added from a photo → show every item for now
+const mealOpen = {};                             // date → which meal is open in the simple view
+function foodViewNow(){ return photoDetail ? 'detail' : store.get('fb_foodview', 'simple'); }
+function openMealNow(foods){
+  if (day && mealOpen[day.date] !== undefined) return mealOpen[day.date];
+  const cur = curMeal(); if (foods.some(f => foodMeal(f) === cur)) return cur;
+  const last = foods.slice().sort((a,b) => String(b.time).localeCompare(String(a.time)))[0];
+  return last ? foodMeal(last) : '';
+}
+document.querySelectorAll('#foodView button').forEach(b => b.onclick = () => { photoDetail = false; store.set('fb_foodview', b.dataset.v); renderFood(); });
+
 function renderFood(){
   const t = day.targets, foods = day.foods || [];
   renderMealPick();
@@ -1052,14 +1073,25 @@ function renderFood(){
       '<button class="ibtn" data-act="edit">Edit</button>' +
       '<button class="ibtn del" data-act="del" aria-label="Remove '+esc(f.item)+'">✕</button>' +
     '</div>';
-  // grouped by part of the day, each with its own subtotal
+  // grouped by part of the day, each with its own subtotal.
+  // Simple: one line per meal, tap to open it.  Detailed: every item.  After a photo: detailed until you leave the tab.
+  const view = foodViewNow();
+  document.querySelectorAll('#foodView button').forEach(b => { const on = b.dataset.v === view; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+  const openMeal = openMealNow(foods);
   $('foodList').innerHTML = foods.length ? SLOTS.map(s => {
     const items = foods.filter(f => foodMeal(f) === s);
     if (!items.length) return '';
     const K = items.reduce((a,x)=>a+x.kcal,0), P = items.reduce((a,x)=>a+x.protein,0);
-    return '<div class="mealhd"><b>'+s+'</b><span class="muted small">'+K.toLocaleString()+' kcal · '+P+' g protein</span></div>' +
-      items.slice().sort((a,b) => String(a.time).localeCompare(String(b.time))).map(foodRow).join('');
+    const rows = items.slice().sort((a,b) => String(a.time).localeCompare(String(b.time))).map(foodRow).join('');
+    if (view === 'detail')
+      return '<div class="mealhd"><b>'+s+'</b><span class="muted small">'+K.toLocaleString()+' kcal · '+P+' g protein</span></div>' + rows;
+    const open = openMeal === s;
+    return '<button class="mealrow" data-meal="'+s+'" aria-expanded="'+open+'"><span class="mt"><span><b>'+s+' <span class="muted" style="font-weight:400;font-size:14px">· '+items.length+(items.length===1?' item':' items')+'</span></b>' +
+      '<span class="small"><b>'+P+' g</b> <span class="muted">· '+K.toLocaleString()+' kcal</span></span></span>' +
+      (open ? '' : '<span class="pv">'+esc(items.map(f => f.item).join(', '))+'</span>') + '</span><span class="ch" aria-hidden="true">›</span></button>' +
+      (open ? '<div class="mealbody">'+rows+'</div>' : '');
   }).join('') : '<div class="empty">Nothing yet today.</div>';
+  $('foodList').querySelectorAll('.mealrow').forEach(b => b.onclick = () => { mealOpen[day.date] = b.getAttribute('aria-expanded') === 'true' ? '' : b.dataset.meal; renderFood(); });
 
   $('foodList').querySelectorAll('.food').forEach(row => {
     const f = foods.find(x => x.id === row.dataset.id);
@@ -2217,7 +2249,7 @@ $('photoAdd').onclick = () => {
   });
   if (!items.length) return;
   const btn = $('photoAdd'); busy(btn, true);
-  run().withSuccessHandler(d => { busy(btn, false); applyFood(d); $('photoCard').hidden = true; photo = null; toast('Added ' + d.added + ' item' + (d.added===1?'':'s') + ' from your photo to ' + curMeal()); })
+  run().withSuccessHandler(d => { busy(btn, false); photoDetail = true; applyFood(d); $('photoCard').hidden = true; photo = null; toast('Added ' + d.added + ' item' + (d.added===1?'':'s') + ' from your photo to ' + curMeal()); })
     .withFailureHandler(e => { busy(btn, false); fail(e); })
     .webAddFoods(day.date, items, 'photo', curMeal());
 };
