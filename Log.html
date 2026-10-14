@@ -1012,12 +1012,8 @@ function showPhotoItems(){
   photoTimer = setTimeout(() => { photoDetail = false; if (day && day.date === dt) { mealOpen[dt] = m; renderFood(); } }, 3000);
 }
 function foodViewNow(){ return photoDetail ? 'detail' : store.get('fb_foodview', 'simple'); }
-function openMealNow(foods){
-  if (day && mealOpen[day.date] !== undefined) return mealOpen[day.date];
-  const cur = curMeal(); if (foods.some(f => foodMeal(f) === cur)) return cur;
-  const last = foods.slice().sort((a,b) => String(b.time).localeCompare(String(a.time)))[0];
-  return last ? foodMeal(last) : '';
-}
+// every meal starts closed; one opens only when you tap it (or right after a photo, to show what was added)
+function openMealNow(){ return (day && mealOpen[day.date]) || ''; }
 document.querySelectorAll('#foodView button').forEach(b => b.onclick = () => { photoDetail = false; clearTimeout(photoTimer); store.set('fb_foodview', b.dataset.v); renderFood(); });
 
 function renderFood(){
@@ -1084,7 +1080,7 @@ function renderFood(){
   // Simple: one line per meal, tap to open it.  Detailed: every item.  After a photo: detailed until you leave the tab.
   const view = foodViewNow();
   document.querySelectorAll('#foodView button').forEach(b => { const on = b.dataset.v === view; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
-  const openMeal = openMealNow(foods);
+  const openMeal = openMealNow();
   $('foodList').innerHTML = foods.length ? SLOTS.map(s => {
     const items = foods.filter(f => foodMeal(f) === s);
     if (!items.length) return '';
