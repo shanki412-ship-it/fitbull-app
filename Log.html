@@ -850,7 +850,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   if (b.dataset.tab === 'coach') { renderChat(); loadAgentState(); }
   if (b.dataset.tab === 'progress') loadDash();
   if (b.dataset.tab === 'checkin') renderChecklist();
-  if (b.dataset.tab !== 'food' && photoDetail) { photoDetail = false; if (day) renderFood(); }
+  if (b.dataset.tab !== 'food' && photoDetail) { photoDetail = false; clearTimeout(photoTimer); if (day) renderFood(); }
   window.scrollTo(0,0);
 });
 
@@ -1004,6 +1004,13 @@ document.querySelectorAll('#mealPick button').forEach(b => b.onclick = () => { m
 
 let photoDetail = false;                         // just added from a photo → show every item for now
 const mealOpen = {};                             // date → which meal is open in the simple view
+let photoTimer = 0;
+// after a photo: show every item for 3 seconds, then back to the simple view with that meal open
+function showPhotoItems(){
+  photoDetail = true; clearTimeout(photoTimer);
+  const m = curMeal(), dt = day && day.date;
+  photoTimer = setTimeout(() => { photoDetail = false; if (day && day.date === dt) { mealOpen[dt] = m; renderFood(); } }, 3000);
+}
 function foodViewNow(){ return photoDetail ? 'detail' : store.get('fb_foodview', 'simple'); }
 function openMealNow(foods){
   if (day && mealOpen[day.date] !== undefined) return mealOpen[day.date];
@@ -1011,7 +1018,7 @@ function openMealNow(foods){
   const last = foods.slice().sort((a,b) => String(b.time).localeCompare(String(a.time)))[0];
   return last ? foodMeal(last) : '';
 }
-document.querySelectorAll('#foodView button').forEach(b => b.onclick = () => { photoDetail = false; store.set('fb_foodview', b.dataset.v); renderFood(); });
+document.querySelectorAll('#foodView button').forEach(b => b.onclick = () => { photoDetail = false; clearTimeout(photoTimer); store.set('fb_foodview', b.dataset.v); renderFood(); });
 
 function renderFood(){
   const t = day.targets, foods = day.foods || [];
@@ -2249,7 +2256,7 @@ $('photoAdd').onclick = () => {
   });
   if (!items.length) return;
   const btn = $('photoAdd'); busy(btn, true);
-  run().withSuccessHandler(d => { busy(btn, false); photoDetail = true; applyFood(d); $('photoCard').hidden = true; photo = null; toast('Added ' + d.added + ' item' + (d.added===1?'':'s') + ' from your photo to ' + curMeal()); })
+  run().withSuccessHandler(d => { busy(btn, false); showPhotoItems(); applyFood(d); $('photoCard').hidden = true; photo = null; toast('Added ' + d.added + ' item' + (d.added===1?'':'s') + ' from your photo to ' + curMeal()); })
     .withFailureHandler(e => { busy(btn, false); fail(e); })
     .webAddFoods(day.date, items, 'photo', curMeal());
 };
