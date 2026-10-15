@@ -122,7 +122,7 @@ button{font:inherit;cursor:pointer}
 .cday .ic{font-size:17px;line-height:1.1;min-height:19px;letter-spacing:-2px}
 .cday.gym{background:var(--okbg)} .cday.gym .d{color:var(--green)}
 .cday.missed{background:var(--warnbg)}
-.cday.future{background:transparent;border:1px dashed var(--line)} .cday.future .ic{opacity:.55;filter:grayscale(.3)}
+.cday.future{background:transparent;border:1px solid var(--line)}
 .cday.today{outline:2px solid var(--accent);outline-offset:-2px}
 .cday.out{visibility:hidden}
 .cday.before{opacity:.35}
@@ -2047,10 +2047,8 @@ function calCell(k, e, today){
   if (e.gym) { ic.push('🏋️'); cls = 'gym'; tip.push(e.gym + (e.sets ? ' · ' + e.sets + ' sets' : '')); }
   else if (e.skipped) { ic.push('⏭️'); tip.push('Skipped ' + (e.planned || 'workout') + ' (' + e.skipped + ')'); }
   else if (e.planned && past && !e.before) { ic.push('⚠️'); cls = 'missed'; tip.push('Missed ' + e.planned); }
-  else if (e.planned && !past) { ic.push('🏋️'); tip.push((isToday ? 'Today: ' : 'Planned: ') + e.planned); }
   if (e.sport) { ic.push(sportIcon(e.sport)); tip.push(e.sport); }
   else if (e.run) { ic.push('🏃'); tip.push(e.run + ' km run'); }
-  else if (e.plannedSport && !past) { ic.push(sportIcon(e.plannedSport)); tip.push('Planned: ' + e.plannedSport); }
   if (!ic.length && past && !e.before) { ic.push('😴'); tip.push('Rest day'); }
   if (!past && !isToday) cls += ' future';
   if (isToday) cls += ' today';
@@ -2075,7 +2073,7 @@ function renderCalendar(c, today){
     h += calCell(k, e, today);
   }
   h += '</div><div class="calsum"><div><b>'+gym+'</b><span>workouts</span></div><div><b>'+sport+'</b><span>sport / runs</span></div><div><b>'+skipped+'</b><span>skipped</span></div><div><b>'+missed+'</b><span>missed</span></div></div>' +
-    '<div class="callegend"><span>🏋️ workout</span><span>🏸🏃 sport / run</span><span>😴 rest</span><span>⏭️ skipped</span><span>⚠️ missed</span><span>dashed = planned</span></div>' +
+    '<div class="callegend"><span>🏋️ workout</span><span>🏸🏃 sport / run</span><span>😴 rest</span><span>⏭️ skipped</span><span>⚠️ missed (planned, not done)</span></div>' +
     '<p class="small muted" style="margin:10px 0 0">Tap a day to open it.</p></div>';
   $('calView').innerHTML = h;
   const step = n => { calMonth = months[months.indexOf(calMonth) + n] || calMonth; renderCalendar(c, today); };
@@ -2083,7 +2081,7 @@ function renderCalendar(c, today){
   $('calView').querySelectorAll('.cday[data-k]').forEach(b => b.onclick = () => {
     const k = b.dataset.k, e = c.days[k] || {};
     if (k > shiftDate(todayStr(), MAX_AHEAD)) { toast('You can open days up to a week ahead'); return; }
-    load(k); document.querySelector('nav button[data-tab="'+(e.gym || (e.planned && k >= today) ? 'gym' : 'checkin')+'"]').click();
+    load(k); document.querySelector('nav button[data-tab="'+(e.gym ? 'gym' : 'checkin')+'"]').click();
   });
 }
 
