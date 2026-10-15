@@ -1379,7 +1379,8 @@ function exState(name, e){
   const sets = []; for (let s = 1; s <= e.sets; s++) { const d = done[keyOf(name, e.exercise, s)]; if (d) sets.push(d); }
   if (sets.length >= e.sets) { const kg = sets[0].kg; const same = sets.every(x => x.kg === kg);
     return { cls: 'ok', text: (same && kg !== '' ? kg + ' kg × ' + sets.map(x => x.reps).join(', ') : sets.map(x => (x.kg !== '' ? x.kg + '×' : '') + x.reps).join(', ')) }; }
-  const plan = e.sets + ' × ' + e.reps + (e.target && e.target !== '—' ? ' · ' + e.target : ' · first time');
+  const rs = restSecs(e.rest);
+  const plan = e.sets + ' × ' + e.reps + (rs ? ' · rest ' + fmtSecs(rs) : ' · superset') + (e.target && e.target !== '—' ? ' · ' + e.target : ' · first time');
   return sets.length ? { cls: 'part', text: sets.length + ' of ' + e.sets + ' sets · ' + plan } : { cls: '', text: plan };
 }
 function paintExHeads(list){
@@ -1423,7 +1424,7 @@ function renderGym(){
       '<div class="exbody"><div class="ex-h"><b>'+esc(e.exercise)+(e.extra?' <span class="tag extra">extra</span>':'')+(e.swappedFrom?' <span class="swapped">instead of '+esc(e.swappedFrom)+'</span>':'')+'</b><span class="muted small">'+e.sets+' × '+esc(e.reps)+(rs?' · rest '+fmtSecs(rs):' · superset')+'</span></div>' +
       '<div class="target">Target: '+esc(e.target)+'</div>' + extra +
       '<div class="hint">Last: '+esc(e.last)+'</div>' +
-      '<div class="exbtns">'+(e.extra ? '<button class="ibtn rm" data-rmx="'+esc(e.exercise)+'">✕ Remove</button>' : '<button class="ibtn" data-swap="'+i+'">⇄ Swap'+((e.alts||[]).length?'':' (none)')+'</button>')+'<button class="ibtn" data-how="'+i+'">ⓘ How to</button></div>' +
+      '<div class="exbtns">'+(e.extra ? '<button class="ibtn rm" data-rmx="'+esc(e.exercise)+'">✕ Remove</button>' : '<button class="ibtn" data-swap="'+i+'">⇄ Swap'+((e.alts||[]).length?'':' (none)')+'</button>')+'<button class="ibtn" data-how="'+i+'">ⓘ How to</button><button class="ibtn" data-rest="'+i+'">⏱ Rest '+fmtSecs(rs || 90)+'</button></div>' +
       '<div class="panel" data-swappanel="'+i+'" hidden></div><div class="panel" data-howpanel="'+i+'" hidden></div>' +
       rows + '</div></div>';
   }).join('') || '<div class="empty">No exercises for this session.</div>';
@@ -1450,6 +1451,7 @@ function renderGym(){
   $('exList').querySelectorAll('.tick').forEach(b => b.onclick = () => toggleSet(b, list));
   $('exList').querySelectorAll('[data-swap]').forEach(b => b.onclick = () => openSwap(Number(b.dataset.swap)));
   $('exList').querySelectorAll('[data-how]').forEach(b => b.onclick = () => openHow(Number(b.dataset.how)));
+  $('exList').querySelectorAll('[data-rest]').forEach(b => b.onclick = () => { const e = list[Number(b.dataset.rest)]; unlockAudio(); startTimer(restSecs(e.rest) || 90, e.exercise); });
   $('exList').querySelectorAll('[data-rmx]').forEach(b => b.onclick = () => removeExtra(b.dataset.rmx));
   renderExtraBox();
   updateProgress(list);
