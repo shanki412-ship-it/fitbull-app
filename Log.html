@@ -126,6 +126,12 @@ button{font:inherit;cursor:pointer}
 .cday.today{outline:2px solid var(--accent);outline-offset:-2px}
 .cday.out{visibility:hidden}
 .cday.before{opacity:.35}
+.gdots{display:flex;gap:3px;justify-content:center;min-height:7px}
+.gdots i{width:7px;height:7px;border-radius:50%;display:block}
+.gdots i.h{background:var(--green)} .gdots i.m{border:1.5px solid var(--muted);opacity:.7} .gdots i.n{visibility:hidden}
+.calgoals{margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;text-align:center}
+.calgoals div{border:1px solid var(--line);border-radius:12px;padding:8px 4px}.calgoals b{display:block;font-size:16px}.calgoals span{font-size:12px;color:var(--muted)}
+.gkey{display:inline-flex;gap:3px;vertical-align:middle;margin-right:4px}.gkey i{width:7px;height:7px;border-radius:50%;background:var(--green);display:block}
 .callegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:13px;color:var(--muted)}
 .calsum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;text-align:center}
 .calsum div{background:var(--bg);border-radius:12px;padding:8px 4px}.calsum b{display:block;font-size:20px}.calsum span{font-size:12px;color:var(--muted)}
@@ -2050,10 +2056,13 @@ function calCell(k, e, today){
   if (e.sport) { ic.push(sportIcon(e.sport)); tip.push(e.sport); }
   else if (e.run) { ic.push('🏃'); tip.push(e.run + ' km run'); }
   if (!ic.length && past && !e.before) { ic.push('😴'); tip.push('Rest day'); }
+  const GL = [['protein','protein'],['calories','calories'],['sleep','sleep'],['steps','steps']], g = e.goals || {};
+  const dots = '<span class="gdots" aria-hidden="true">' + GL.map(([id]) => '<i class="'+(g[id] === 1 ? 'h' : g[id] === 0 ? 'm' : 'n')+'"></i>').join('') + '</span>';
+  GL.forEach(([id, label]) => { if (g[id] !== undefined) tip.push(label + (g[id] ? ' met' : ' missed')); });
   if (!past && !isToday) cls += ' future';
   if (isToday) cls += ' today';
   if (e.before) cls += ' before';
-  return '<button class="cday '+cls+'" data-k="'+k+'" aria-label="'+esc(niceDate(k, {weekday:'long', day:'numeric', month:'long'}) + ': ' + (tip.join(', ') || 'nothing logged'))+'"><span class="d">'+Number(k.slice(8))+'</span><span class="ic">'+ic.slice(0, 2).join('')+'</span></button>';
+  return '<button class="cday '+cls+'" data-k="'+k+'" aria-label="'+esc(niceDate(k, {weekday:'long', day:'numeric', month:'long'}) + ': ' + (tip.join(', ') || 'nothing logged'))+'"><span class="d">'+Number(k.slice(8))+'</span><span class="ic">'+ic.slice(0, 2).join('')+'</span>'+dots+'</button>';
 }
 function renderCalendar(c, today){
   const months = []; for (let m = c.from.slice(0, 7); m <= c.to.slice(0, 7); ) { months.push(m); const [y, mo] = m.split('-').map(Number); m = mo === 12 ? (y + 1) + '-01' : y + '-' + String(mo + 1).padStart(2, '0'); }
@@ -2066,14 +2075,18 @@ function renderCalendar(c, today){
     ['M','T','W','T','F','S','S'].map(x => '<span class="dn">'+x+'</span>').join('');
   for (let i = 0; i < lead; i++) h += '<span class="cday out"></span>';
   let gym = 0, sport = 0, missed = 0, skipped = 0;
+  const gm = { protein: [0, 0], calories: [0, 0], sleep: [0, 0], steps: [0, 0] };
   for (let dd = 1; dd <= daysIn; dd++) {
     const k = calMonth + '-' + String(dd).padStart(2, '0'), e = c.days[k];
     if (!e) { h += '<span class="cday out"></span>'; continue; }
+    if (e.goals) Object.keys(gm).forEach(id => { if (e.goals[id] !== undefined) { gm[id][1]++; gm[id][0] += e.goals[id]; } });
     if (k <= today) { if (e.gym) gym++; if (e.sport || e.run) sport++; if (e.skipped && !e.gym) skipped++; if (e.planned && !e.gym && !e.skipped && k < today && !e.before) missed++; }
     h += calCell(k, e, today);
   }
   h += '</div><div class="calsum"><div><b>'+gym+'</b><span>workouts</span></div><div><b>'+sport+'</b><span>sport / runs</span></div><div><b>'+skipped+'</b><span>skipped</span></div><div><b>'+missed+'</b><span>missed</span></div></div>' +
-    '<div class="callegend"><span>🏋️ workout</span><span>🏸🏃 sport / run</span><span>😴 rest</span><span>⏭️ skipped</span><span>⚠️ missed (planned, not done)</span></div>' +
+    '<div class="calgoals">' + [['protein','🥚 Protein'],['calories','🎯 Calories'],['sleep','😴 Sleep'],['steps','👟 Steps']].map(([id, l]) =>
+      '<div><b>'+gm[id][0]+'<span style="font-size:12px;font-weight:400"> / '+gm[id][1]+'</span></b><span>'+l+' met</span></div>').join('') + '</div>' +
+    '<div class="callegend"><span><span class="gkey"><i></i><i></i><i></i><i></i></span>protein · calories · sleep · steps (filled = met, ring = missed)</span><span>🏋️ workout</span><span>🏸🏃 sport / run</span><span>😴 rest</span><span>⏭️ skipped</span><span>⚠️ missed (planned, not done)</span></div>' +
     '<p class="small muted" style="margin:10px 0 0">Tap a day to open it.</p></div>';
   $('calView').innerHTML = h;
   const step = n => { calMonth = months[months.indexOf(calMonth) + n] || calMonth; renderCalendar(c, today); };

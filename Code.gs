@@ -2174,6 +2174,9 @@ function webGetDashboardData_() {
     const sets = {}; lifts.forEach(l => { const k = key_(l['Date']); if (!sets[k]) sets[k] = { n: 0, session: '' }; sets[k].n++; if (l['Session'] && !sets[k].session) sets[k].session = String(l['Session']); });
     const runs = {}; try { readRuns_().forEach(r => { const k = key_(r['Date']); runs[k] = (runs[k] || 0) + (Number(r['Distance km']) || 0); }); } catch (e) {}
     const days = {};
+    // daily goals, judged exactly like the Streaks view (protein, calories, sleep, steps)
+    const judge = dayJudge_(s, readTable_(SHEETS.TARGETS)), defs = streakDefs_(s).filter(x => ['protein', 'calories', 'sleep', 'steps'].includes(x.id));
+    const sickDays = new Set(log.filter(r => /^sick$/i.test(String(r['Feeling'] || ''))).map(r => key_(r['Date'])));
     for (let x = from; key_(x) <= key_(to); x = addDays_(x, 1)) {
       const k = key_(x), dow = Number(fmt_(x, 'u')) % 7, r = byLog[k] || {};
       const planned = sessionFor_(dow), sport = sportOn_(dow);
@@ -2187,6 +2190,16 @@ function webGetDashboardData_() {
       if (planned) e.planned = planned;
       if (sport) e.plannedSport = sport.name;
       if (start && k < start) e.before = true;
+      if (k <= todayKey && !e.before && byLog[k]) {
+        const j = judge(k), g = {};
+        defs.forEach(def => {
+          const field = { protein: 'Protein g', calories: 'kcal', sleep: 'Sleep h', steps: 'Steps' }[def.id];
+          if (num_(r[field]) === null) return;                       // not logged → no dot (only actual data)
+          const st = def.test(r, j, sickDays.has(k)); if (st !== 'skip') g[def.id] = st === 'hit' ? 1 : 0;
+        });
+        if (Object.keys(g).length) e.goals = g;
+        e.vals = { p: num_(r['Protein g']), k: num_(r['kcal']), sl: num_(r['Sleep h']), st: num_(r['Steps']), kt: j.kcal, stt: j.steps };
+      }
       days[k] = e;
     }
     return { from: key_(from), to: key_(to), days };
@@ -2987,7 +3000,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-15.7';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-15.8';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;
