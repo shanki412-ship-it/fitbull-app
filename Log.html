@@ -66,9 +66,11 @@ button{font:inherit;cursor:pointer}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:8px 12px;font-size:14px}
 .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.chip.added{background:var(--green);border-color:var(--green);color:#fff}
-.chip.added .muted{color:rgba(255,255,255,.85)}
-.chip .n{display:inline-block;min-width:20px;margin-left:4px;padding:0 6px;border-radius:999px;background:rgba(255,255,255,.25);font-weight:700;font-size:12px}
+.chip.added{border-color:var(--green)}
+.chip .n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:11px;background:var(--green);color:#fff;font-size:12px;font-weight:700;vertical-align:middle}
+.chip .n[hidden]{display:none}
+.chip.pop{animation:pop .35s}
+@keyframes pop{40%{transform:scale(1.08)}}
 .chip:disabled{opacity:.6}
 .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;margin:12px 0}
 .seg button{flex:1;border:0;background:none;border-radius:9px;padding:9px;font-weight:600;color:var(--muted)}
@@ -242,6 +244,8 @@ nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width
 nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:12px}
+.toast .undo{border:0;background:none;color:var(--bg);font:inherit;font-weight:800;text-decoration:underline;padding:4px 2px;cursor:pointer}
 /* coach chat */
 .chat{display:flex;flex-direction:column;gap:10px}
 .msg{max-width:88%;padding:10px 12px;border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere}
@@ -464,7 +468,7 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
         <div class="small muted" style="margin:12px 0 6px">Your meals</div>
       </div>
       <div class="chips few" id="meals" style="margin-top:10px"></div>
-      <p class="muted small" style="margin:10px 0 0">Tap to add it straight away. Green = already added today.</p>
+      <p class="muted small" style="margin:10px 0 0">Each tap adds one more portion (the badge shows how many today). Tap <b>Undo</b> if you tapped by mistake.</p>
     </div>
   </section>
 
@@ -717,7 +721,18 @@ function setTheme(t){ document.documentElement.setAttribute('data-theme', t); st
 document.addEventListener('DOMContentLoaded', paintThemeBtn); paintThemeBtn();
 if ($('themeBtn')) $('themeBtn').onclick = () => setTheme(isDark() ? 'light' : 'dark');
 
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function toast(msg, undo){
+  const t=$('toast'); t.textContent=msg; t.classList.toggle('act', !!undo);
+  if (undo) { const b = document.createElement('button'); b.className='undo'; b.textContent='Undo';
+    b.onclick = () => { t.classList.remove('show','act'); undo(); }; t.appendChild(b); }
+  t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show','act'), undo ? 5000 : 2600);
+}
+// the food a tap just added (so it can be undone)
+function newFoodId(before, r){ const old = new Set(before.map(f => f.id)); const f = (r.foods || []).filter(x => !old.has(x.id)).pop(); return f && f.id; }
+function undoFood(id, item){
+  if (!id) return;
+  run().withSuccessHandler(d => { applyFood(d); toast('Removed ' + item); }).withFailureHandler(fail).webDeleteFood(id);
+}
 function fail(e){ toast('Error: ' + (e && e.message ? e.message : e)); document.querySelectorAll('.btn').forEach(b=>b.disabled=false); if (typeof syncAddBtn==='function') syncAddBtn(); }
 function busy(btn,on){ btn.disabled=on; }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -765,8 +780,11 @@ function setupStatic(d){
   $('mealsAll').onclick = () => { const few = $('meals').classList.toggle('few'); $('mealsAll').textContent = few ? 'See all (' + MEALS.length + ')' : 'Show fewer'; };
   $('meals').querySelectorAll('.chip').forEach(c => c.onclick = () => {
     const m = MEALS[c.dataset.i];
-    c.disabled = true; c.classList.add('added');
-    run().withSuccessHandler(r => { applyFood(r); c.disabled=false; toast('Added ' + m[0] + ' to ' + curMeal() + ' – remove it under "Eaten today"'); })
+    c.disabled = true; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+    const before = (day.foods || []).slice();
+    run().withSuccessHandler(r => { const id = newFoodId(before, r); applyFood(r); c.disabled=false;
+        const n = (r.foods || []).filter(f => f.item === m[0]).length;
+        toast('Added ' + m[0] + (n > 1 ? ' (×' + n + ' today)' : '') + ' to ' + curMeal(), () => undoFood(id, m[0])); })
       .withFailureHandler(e => { c.disabled=false; renderFood(); fail(e); })
       .webAddFood(day.date, m[1], m[2], m[0], 'meal', m[3], m[4], curMeal());
   });
@@ -1031,6 +1049,7 @@ function showPhotoItems(){
   const m = curMeal(), dt = day && day.date;
   photoTimer = setTimeout(() => { photoDetail = false; if (day && day.date === dt) { mealOpen[dt] = m; renderFood(); } }, 3000);
 }
+function groupNames(items){ const c = new Map(); items.forEach(f => c.set(f.item, (c.get(f.item) || 0) + 1)); return [...c].map(([n, k]) => k > 1 ? n + ' ×' + k : n).join(', '); }
 function foodViewNow(){ return photoDetail ? 'detail' : store.get('fb_foodview', 'simple'); }
 // every meal starts closed; one opens only when you tap it (or right after a photo, to show what was added)
 function openMealNow(){ return (day && mealOpen[day.date]) || ''; }
@@ -1072,11 +1091,14 @@ function renderFood(){
   $('recentCard').hidden = !rec.length;
   $('recent').innerHTML = rec.map((r,i) => {
     const n = foods.filter(f => f.item.toLowerCase() === r.item.toLowerCase()).length;
-    return '<button class="chip'+(n?' added':'')+'" data-r="'+i+'">'+esc(r.item)+' <span class="muted">'+r.protein+'g</span><span class="n"'+(n?'':' hidden')+'>'+(n>1?'×'+n:'✓')+'</span></button>';
+    return '<button class="chip'+(n?' added':'')+'" data-r="'+i+'">'+esc(r.item)+' <span class="muted">'+r.protein+'g</span><span class="n"'+(n?'':' hidden')+'>'+(n>1?'×'+n:'×1')+'</span></button>';
   }).join('');
   $('recent').querySelectorAll('.chip').forEach(c => c.onclick = () => {
-    const r = rec[c.dataset.r]; c.disabled = true; c.classList.add('added');
-    run().withSuccessHandler(d => { c.disabled=false; applyFood(d); toast('Added ' + r.item + ' to ' + curMeal()); })
+    const r = rec[c.dataset.r]; c.disabled = true; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+    const before = (day.foods || []).slice();
+    run().withSuccessHandler(d => { const id = newFoodId(before, d); c.disabled=false; applyFood(d);
+        const n = (d.foods || []).filter(f => f.item.toLowerCase() === r.item.toLowerCase()).length;
+        toast('Added ' + r.item + (n > 1 ? ' (×' + n + ' today)' : '') + ' to ' + curMeal(), () => undoFood(id, r.item)); })
       .withFailureHandler(e => { c.disabled=false; renderFood(); fail(e); })
       .webAddFood(day.date, r.kcal, r.protein, r.item, 'recent', r.fat, r.sugar, curMeal());
   });
@@ -1085,7 +1107,7 @@ function renderFood(){
     const m = MEALS[c.dataset.i];
     const n = foods.filter(f => f.item === m[0]).length;
     c.classList.toggle('added', n > 0);
-    c.querySelector('.n').textContent = n > 1 ? '×' + n : (n ? '✓' : '');
+    c.querySelector('.n').textContent = n ? '×' + n : '';
     c.querySelector('.n').hidden = !n;
   });
 
@@ -1112,7 +1134,7 @@ function renderFood(){
     const open = openMeal === s;
     return '<button class="mealrow" data-meal="'+s+'" aria-expanded="'+open+'"><span class="mt"><span><b>'+s+' <span class="muted" style="font-weight:400;font-size:14px">· '+items.length+(items.length===1?' item':' items')+'</span></b>' +
       '<span class="small"><b>'+P+' g</b> <span class="muted">· '+K.toLocaleString()+' kcal</span></span></span>' +
-      (open ? '' : '<span class="pv">'+esc(items.map(f => f.item).join(', '))+'</span>') + '</span><span class="ch" aria-hidden="true">›</span></button>' +
+      (open ? '' : '<span class="pv">'+esc(groupNames(items))+'</span>') + '</span><span class="ch" aria-hidden="true">›</span></button>' +
       (open ? '<div class="mealbody">'+rows+'</div>' : '');
   }).join('') : '<div class="empty">Nothing yet today.</div>';
   $('foodList').querySelectorAll('.mealrow').forEach(b => b.onclick = () => { mealOpen[day.date] = b.getAttribute('aria-expanded') === 'true' ? '' : b.dataset.meal; renderFood(); });
