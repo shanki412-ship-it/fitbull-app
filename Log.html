@@ -1375,6 +1375,13 @@ function renderExtraBox(){
 const gymOpen = {};                                   // date|session → open exercise index
 const gymKey = () => (day ? day.date : '') + '|' + $('sess').value;
 function gymViewNow(){ return store.get('fb_gymview', 'simple'); }
+// superset pairs belong together: exercise i plus the ones linked to it by 'superset'
+function exGroup(list, i){
+  if (i < 0 || !list[i]) return [];
+  let a = i; while (a > 0 && restSecs(list[a-1].rest) === 0) a--;
+  let b = i; while (b < list.length - 1 && restSecs(list[b].rest) === 0) b++;
+  const g = []; for (let k = a; k <= b; k++) g.push(k); return g;
+}
 function exState(name, e){
   const sets = []; for (let s = 1; s <= e.sets; s++) { const d = done[keyOf(name, e.exercise, s)]; if (d) sets.push(d); }
   if (sets.length >= e.sets) { const kg = sets[0].kg; const same = sets.every(x => x.kg === kg);
@@ -1418,7 +1425,7 @@ function renderGym(){
         '<button class="tick" data-ex="'+i+'" data-set="'+s+'" aria-label="Mark set '+s+' done">'+(dn ? (dn.synced?'✓':'⟳') : '✓')+'</button></div>';
     }
     const base = e.swappedFrom || e.exercise;
-    const st = exState(name, e), open = gymViewNow() === 'detail' || gymOpen[gymKey()] === i;
+    const st = exState(name, e), open = gymViewNow() === 'detail' || exGroup(list, gymOpen[gymKey()] ?? -1).includes(i);
     return '<div class="ex'+(e.extra?' extra':'')+(open?' open':' closed')+'" data-i="'+i+'">' +
       '<button class="exhead" data-exh="'+i+'" aria-expanded="'+open+'"'+(gymViewNow()==='detail'?' hidden':'')+'><span class="exdone '+st.cls+'" aria-hidden="true">✓</span><span class="em"><b>'+esc(e.exercise)+'</b><span class="es'+(st.cls==='ok'?' ok':'')+'">'+esc(st.text)+'</span></span><span class="ch" aria-hidden="true">›</span></button>' +
       '<div class="exbody"><div class="ex-h"><b>'+esc(e.exercise)+(e.extra?' <span class="tag extra">extra</span>':'')+(e.swappedFrom?' <span class="swapped">instead of '+esc(e.swappedFrom)+'</span>':'')+'</b><span class="muted small">'+e.sets+' × '+esc(e.reps)+(rs?' · rest '+fmtSecs(rs):' · superset')+'</span></div>' +
@@ -1430,7 +1437,7 @@ function renderGym(){
   }).join('') || '<div class="empty">No exercises for this session.</div>';
   $('exList').classList.toggle('simple', gymViewNow() === 'simple');
   document.querySelectorAll('#gymView button').forEach(b => { const on = b.dataset.v === gymViewNow(); b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
-  $('exList').querySelectorAll('[data-exh]').forEach(b => b.onclick = () => { const i = Number(b.dataset.exh); gymOpen[gymKey()] = gymOpen[gymKey()] === i ? -1 : i; renderGym(); });
+  $('exList').querySelectorAll('[data-exh]').forEach(b => b.onclick = () => { const i = Number(b.dataset.exh), cur = exGroup(list, gymOpen[gymKey()] ?? -1); gymOpen[gymKey()] = cur.includes(i) ? -1 : i; renderGym(); });
 
   // inputs → draft (so nothing typed is lost if the page reloads)
   $('exList').querySelectorAll('.setrow input').forEach(inp => inp.oninput = () => {
@@ -1551,18 +1558,22 @@ function toggleSet(btn, list){
   done[k] = { id: cid, kg: kg === '' ? '' : Number(kg), reps: Number(reps), synced: false };
   queue.push({ op: 'add', cid, date: day.date, session: name, exercise: e.exercise, set: s, kg: kg === '' ? '' : Number(kg), reps: Number(reps) });
   saveQueue(); paintSet(k); updateProgress(list); renderChecklist(); flush(); dashAt = 0;
-  // simple view: finished this exercise → fold it and open the next one
-  if (gymViewNow() === 'simple' && exState(name, e).cls === 'ok') {
-    const ni = Number(btn.dataset.ex) + 1;
-    setTimeout(() => { gymOpen[gymKey()] = ni < list.length ? ni : -1; renderGym(); }, 900);
-  }
 
   // rest timer: supersets go straight to the partner exercise
   const idx = Number(btn.dataset.ex), secs = restSecs(e.rest);
   const lastSetOfAll = idx === list.length - 1 && s === e.sets;
   if (lastSetOfAll) { stopTimer(); toast('Last set done – tap Finish session below'); }
-  else if (secs === 0 && list[idx+1]) { stopTimer(); toast('Superset – go straight to ' + list[idx+1].exercise); }
+  else if (secs === 0 && list[idx+1]) { stopTimer(); toast('Superset – go straight to ' + list[idx+1].exercise + ' (rest timer starts after it)'); }
   else startTimer(secs || 90, e.exercise);
+
+  // simple view: finished this exercise → fold it and open the next one (after the timer has started)
+  try {
+    const grp = exGroup(list, idx);
+    if (gymViewNow() === 'simple' && grp.every(k => exState(name, list[k]).cls === 'ok')) {
+      const ni = grp[grp.length - 1] + 1;
+      setTimeout(() => { gymOpen[gymKey()] = ni < list.length ? ni : -1; renderGym(); }, 900);
+    }
+  } catch (err) { console.error(err); }
 }
 
 $('sess').onchange = () => { renderGym(); paintHomeBtn(); };
