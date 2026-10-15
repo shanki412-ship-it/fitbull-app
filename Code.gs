@@ -2166,7 +2166,34 @@ function webGetDashboardData_() {
     target: r['Calorie target'], maintenance: r['Est. maintenance'],
   }));
 
+  // Calendar: last month to two weeks ahead – what happened (or is planned) each day
+  const calendar = (() => {
+    const from = parseDay_(key_(addDays_(today, -40)).slice(0, 7) + '-01'), to = addDays_(today, 14);
+    const start = s['Start date'] instanceof Date ? key_(s['Start date']) : '';
+    const byLog = {}; log.forEach(r => { byLog[key_(r['Date'])] = r; });
+    const sets = {}; lifts.forEach(l => { const k = key_(l['Date']); if (!sets[k]) sets[k] = { n: 0, session: '' }; sets[k].n++; if (l['Session'] && !sets[k].session) sets[k].session = String(l['Session']); });
+    const runs = {}; try { readRuns_().forEach(r => { const k = key_(r['Date']); runs[k] = (runs[k] || 0) + (Number(r['Distance km']) || 0); }); } catch (e) {}
+    const days = {};
+    for (let x = from; key_(x) <= key_(to); x = addDays_(x, 1)) {
+      const k = key_(x), dow = Number(fmt_(x, 'u')) % 7, r = byLog[k] || {};
+      const planned = sessionFor_(dow), sport = sportOn_(dow);
+      const e = {};
+      if (sets[k]) { e.gym = String(r['Session'] || sets[k].session || 'Workout'); e.sets = sets[k].n; }
+      else if (String(r['Session'] || '').trim()) e.gym = String(r['Session']);
+      if (String(r['Skipped'] || '')) e.skipped = String(r['Skipped']);
+      const act = activityOf_(r); if (act && !/^none$/i.test(act)) e.sport = act;
+      if (runs[k]) e.run = rnd_(runs[k], 1);
+      if (num_(r['Weight kg']) !== null) e.weight = Number(r['Weight kg']);
+      if (planned) e.planned = planned;
+      if (sport) e.plannedSport = sport.name;
+      if (start && k < start) e.before = true;
+      days[k] = e;
+    }
+    return { from: key_(from), to: key_(to), days };
+  })();
+
   return {
+    calendar,
     today: todayKey, weekNum, deload: isDeloadWeek_(weekNum),
     nextDeloadWeek: (() => { const n = Number(trainingCfg_().deloadEvery) || 0; return !n ? null : isDeloadWeek_(weekNum) ? weekNum : Math.ceil(weekNum / n) * n; })(),
     sessionsPerWeek: sessionsPerWeek_(),
@@ -2960,7 +2987,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-15.5';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-15.6';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;

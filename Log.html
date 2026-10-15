@@ -110,6 +110,25 @@ button{font:inherit;cursor:pointer}
 .mealrow .ch{font-size:20px;color:var(--muted);width:16px;text-align:center;transition:transform .15s}
 .mealrow[aria-expanded="true"] .ch{transform:rotate(90deg)}
 .mealbody{padding:0 0 10px}
+/* progress calendar */
+.calhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.calhd b{font-size:17px}
+.calhd button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px}
+.calhd button:disabled{opacity:.3}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calgrid .dn{font-size:11px;color:var(--muted);text-align:center;font-weight:700;letter-spacing:.04em;padding-bottom:2px}
+.cday{min-height:58px;border:0;border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.cday .d{font-size:12px;font-weight:700;color:var(--muted)}
+.cday .ic{font-size:17px;line-height:1.1;min-height:19px;letter-spacing:-2px}
+.cday.gym{background:var(--okbg)} .cday.gym .d{color:var(--green)}
+.cday.missed{background:var(--warnbg)}
+.cday.future{background:transparent;border:1px dashed var(--line)} .cday.future .ic{opacity:.55;filter:grayscale(.3)}
+.cday.today{outline:2px solid var(--accent);outline-offset:-2px}
+.cday.out{visibility:hidden}
+.cday.before{opacity:.35}
+.callegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:13px;color:var(--muted)}
+.calsum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;text-align:center}
+.calsum div{background:var(--bg);border-radius:12px;padding:8px 4px}.calsum b{display:block;font-size:20px}.calsum span{font-size:12px;color:var(--muted)}
 .empty{color:var(--muted);font-size:14px;padding:4px 0}
 .bar{height:10px;background:var(--bg);border-radius:6px;overflow:hidden;margin:6px 0 2px}
 .bar>i{display:block;height:100%;background:var(--green);border-radius:6px}
@@ -607,10 +626,12 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
   <section id="tab-progress" hidden>
     <div class="seg" id="progSeg" role="tablist">
       <button class="on" data-pv="goals">Goals</button>
+      <button data-pv="calendar">Calendar</button>
       <button data-pv="streaks">Streaks</button>
       <button data-pv="charts">Charts</button>
     </div>
     <div id="goalsView"><div class="card"><div class="empty">Loading your progress…</div></div></div>
+    <div id="calView" hidden><div class="card"><div class="empty">Loading your calendar…</div></div></div>
     <div id="streaksView" hidden><div class="card"><div class="empty">Loading your streaks…</div></div></div>
     <div id="dash" hidden><div class="card"><div class="empty">Loading your progress…</div></div></div>
   </section>
@@ -1875,7 +1896,7 @@ function loadDash(){
   if (dash && Date.now() - dashAt < 60000) return;
   if (!dash) { const c = store.get('coach-dash-cache-v1', null); if (c && c.today === todayStr()) { dash = c; renderDash(); } }
   run().withSuccessHandler(d => { dash = d; dashAt = Date.now(); try { store.set('coach-dash-cache-v1', d); } catch (e) {} renderDash(); })
-    .withFailureHandler(e => { ['dash','goalsView','streaksView'].forEach(id => $(id).innerHTML = '<div class="card"><div class="empty">Couldn\'t load progress: '+esc(e.message||e)+'</div></div>'); })
+    .withFailureHandler(e => { ['dash','goalsView','streaksView','calView'].forEach(id => $(id).innerHTML = '<div class="card"><div class="empty">Couldn\'t load progress: '+esc(e.message||e)+'</div></div>'); })
     .webGetDashboard();
 }
 
@@ -1987,6 +2008,7 @@ function renderDash(){
   const ps = $('prSel'); if (ps) ps.onchange = () => { prPick = ps.value; renderDash(); };
   if (d.goals) renderGoals(d);
   if (d.streaks) renderStreaks(d);
+  if (d.calendar) renderCalendar(d.calendar, d.today);
 }
 
 // ---------------------------------------------------------------- goals + streaks
@@ -1996,6 +2018,7 @@ document.querySelectorAll('#progSeg button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#progSeg button').forEach(x => x.classList.toggle('on', x === b));
   $('goalsView').hidden = progView !== 'goals';
   $('streaksView').hidden = progView !== 'streaks';
+  $('calView').hidden = progView !== 'calendar';
   $('dash').hidden = progView !== 'charts';
 });
 const pctOf = (h, n) => n ? Math.round(h / n * 100) : 0;
@@ -2015,6 +2038,55 @@ function meter(label, hit, of, opts){
   return '<div class="meter"><span>'+label+'</span><span class="r">'+hit+' of '+of+' '+(opts.unit||'days')+'</span>' +
     '<div class="bar"><i style="width:'+p+'%;background:'+col+'"></i></div>'+(opts.sub?'<div class="sub">'+opts.sub+'</div>':'')+'</div>';
 }
+// ---------------------------------------------------------------- progress calendar
+let calMonth = '';                                          // 'YYYY-MM' being shown
+const sportIcon = s => /badminton|shuttle/i.test(s) ? '🏸' : /run|jog/i.test(s) ? '🏃' : /swim/i.test(s) ? '🏊' : /cycl|bike/i.test(s) ? '🚴' : /walk|hike/i.test(s) ? '🚶' : /yoga|stretch/i.test(s) ? '🧘' : /football|soccer/i.test(s) ? '⚽' : /tennis/i.test(s) ? '🎾' : /cricket/i.test(s) ? '🏏' : '⚡';
+function calCell(k, e, today){
+  const past = k < today, isToday = k === today, ic = [];
+  let cls = '', tip = [];
+  if (e.gym) { ic.push('🏋️'); cls = 'gym'; tip.push(e.gym + (e.sets ? ' · ' + e.sets + ' sets' : '')); }
+  else if (e.skipped) { ic.push('⏭️'); tip.push('Skipped ' + (e.planned || 'workout') + ' (' + e.skipped + ')'); }
+  else if (e.planned && past && !e.before) { ic.push('⚠️'); cls = 'missed'; tip.push('Missed ' + e.planned); }
+  else if (e.planned && !past) { ic.push('🏋️'); tip.push((isToday ? 'Today: ' : 'Planned: ') + e.planned); }
+  if (e.sport) { ic.push(sportIcon(e.sport)); tip.push(e.sport); }
+  else if (e.run) { ic.push('🏃'); tip.push(e.run + ' km run'); }
+  else if (e.plannedSport && !past) { ic.push(sportIcon(e.plannedSport)); tip.push('Planned: ' + e.plannedSport); }
+  if (!ic.length && past && !e.before) { ic.push('😴'); tip.push('Rest day'); }
+  if (!past && !isToday) cls += ' future';
+  if (isToday) cls += ' today';
+  if (e.before) cls += ' before';
+  return '<button class="cday '+cls+'" data-k="'+k+'" aria-label="'+esc(niceDate(k, {weekday:'long', day:'numeric', month:'long'}) + ': ' + (tip.join(', ') || 'nothing logged'))+'"><span class="d">'+Number(k.slice(8))+'</span><span class="ic">'+ic.slice(0, 2).join('')+'</span></button>';
+}
+function renderCalendar(c, today){
+  const months = []; for (let m = c.from.slice(0, 7); m <= c.to.slice(0, 7); ) { months.push(m); const [y, mo] = m.split('-').map(Number); m = mo === 12 ? (y + 1) + '-01' : y + '-' + String(mo + 1).padStart(2, '0'); }
+  if (!months.includes(calMonth)) calMonth = today.slice(0, 7);
+  const [y, mo] = calMonth.split('-').map(Number);
+  const first = new Date(y, mo - 1, 1), daysIn = new Date(y, mo, 0).getDate(), lead = (first.getDay() + 6) % 7;   // weeks start Monday
+  let h = '<div class="card"><div class="calhd"><button id="calPrev" aria-label="Previous month"'+(months.indexOf(calMonth) <= 0 ? ' disabled' : '')+'>‹</button>' +
+    '<b>'+first.toLocaleDateString(undefined, {month:'long', year:'numeric'})+'</b>' +
+    '<button id="calNext" aria-label="Next month"'+(months.indexOf(calMonth) >= months.length - 1 ? ' disabled' : '')+'>›</button></div><div class="calgrid">' +
+    ['M','T','W','T','F','S','S'].map(x => '<span class="dn">'+x+'</span>').join('');
+  for (let i = 0; i < lead; i++) h += '<span class="cday out"></span>';
+  let gym = 0, sport = 0, missed = 0, skipped = 0;
+  for (let dd = 1; dd <= daysIn; dd++) {
+    const k = calMonth + '-' + String(dd).padStart(2, '0'), e = c.days[k];
+    if (!e) { h += '<span class="cday out"></span>'; continue; }
+    if (k <= today) { if (e.gym) gym++; if (e.sport || e.run) sport++; if (e.skipped && !e.gym) skipped++; if (e.planned && !e.gym && !e.skipped && k < today && !e.before) missed++; }
+    h += calCell(k, e, today);
+  }
+  h += '</div><div class="calsum"><div><b>'+gym+'</b><span>workouts</span></div><div><b>'+sport+'</b><span>sport / runs</span></div><div><b>'+skipped+'</b><span>skipped</span></div><div><b>'+missed+'</b><span>missed</span></div></div>' +
+    '<div class="callegend"><span>🏋️ workout</span><span>🏸🏃 sport / run</span><span>😴 rest</span><span>⏭️ skipped</span><span>⚠️ missed</span><span>dashed = planned</span></div>' +
+    '<p class="small muted" style="margin:10px 0 0">Tap a day to open it.</p></div>';
+  $('calView').innerHTML = h;
+  const step = n => { calMonth = months[months.indexOf(calMonth) + n] || calMonth; renderCalendar(c, today); };
+  $('calPrev').onclick = () => step(-1); $('calNext').onclick = () => step(1);
+  $('calView').querySelectorAll('.cday[data-k]').forEach(b => b.onclick = () => {
+    const k = b.dataset.k, e = c.days[k] || {};
+    if (k > shiftDate(todayStr(), MAX_AHEAD)) { toast('You can open days up to a week ahead'); return; }
+    load(k); document.querySelector('nav button[data-tab="'+(e.gym || (e.planned && k >= today) ? 'gym' : 'checkin')+'"]').click();
+  });
+}
+
 function renderGoals(d){
   const g = d.goals, c = d.cheer, wk = g.week, w = g.weight, ws = g.waist, st = g.strength;
   const delta = g.score !== null && g.prevScore !== null ? g.score - g.prevScore : null;
