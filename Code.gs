@@ -1999,13 +1999,16 @@ function webRecalcItem(item, grams) {
 }
 
 /** The AI estimate behind Recheck: smart model, reference table, time-limited. Returns numbers or null. */
-function recalcFood_(name, g, budgetMs) {
+function recalcFood_(name, g, budgetMs, quick) {
   const prompt = `Estimate the nutrition for this food as eaten: "${name}"${g ? `, portion ${g} g` : ' (assume one typical home portion and say how many grams that is)'}.
 Assume home cooking with normal oil unless the name says otherwise. The name is the person's own correction – trust it exactly.
 Use these reference values when the food (or an ingredient) is listed, scaled to the portion:
 ${foodReferenceText_()}
 Reply with JSON only: {"item":"${name.replace(/"/g, "'")}","grams":0,"kcal":0,"protein":0,"fat":0,"sugar":0}`;
-  const text = geminiSmart_({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } }, budgetMs);
+  const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } };
+  let text;
+  if (quick) { const r = geminiCall_(body, true, false, budgetMs); text = r ? r.text.replace(/^\x60{3}(?:json)?\s*/i, '').replace(/\x60{3}\s*$/, '').trim() : null; }
+  else text = geminiSmart_(body, budgetMs);
   let j = null;
   if (text) { try { const m = text.match(/\{[\s\S]*\}/); j = JSON.parse(m ? m[0] : text); } catch (e) { j = null; } }
   if (!j) return null;
@@ -2569,7 +2572,10 @@ function webEstimateFood(id) {
   const f = findFood_(id);
   if (!f) throw new Error('Item not found – refresh and try again');
   const name = String(f.values[2]);
-  const est = localEstimate_(name) || recalcFood_(name, 0, 45000) || estimateFood_(name);
+  const t0 = Date.now();
+  let est = localEstimate_(name) || recalcFood_(name, 0, 20000, true);
+  // a second try only if the first answered quickly but unclearly (not when Google was slow or out of allowance)
+  if (!est && Date.now() - t0 < 8000 && !/allowance|slow|429/i.test(lastGeminiError_)) est = estimateFood_(name);
   const sh = foodSheet_();
   if (est) {
     sh.getRange(f.row, 4, 1, 3).setValues([[est.kcal, est.protein, 'estimate']]);
@@ -2935,7 +2941,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-15.2';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-15.3';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;
