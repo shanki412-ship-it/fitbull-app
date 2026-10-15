@@ -39,7 +39,7 @@ details.fold[open]>summary{margin-bottom:12px}
 .actrow .btn{padding-left:6px;padding-right:6px;font-size:15px;white-space:nowrap}
 .actrow .btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:0}
 #meals.few .chip:nth-child(n+7){display:none}
-#suggestCard,#recentCard{display:none!important}
+#suggestCard{display:none!important}
 .nextline{width:100%;border:0;background:none;color:var(--ink);font:inherit;text-align:left;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .nextline .chev{font-size:24px;color:var(--muted)}
 .brand{display:flex;align-items:center;gap:8px;margin:2px 0 6px;min-width:0}
@@ -449,10 +449,6 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
       <div class="chips" id="suggest" style="margin-top:8px"></div>
     </div>
     <button class="btn ghost" id="copyY" hidden></button>
-    <div class="card" id="recentCard" hidden>
-      <h2>Recent</h2>
-      <div class="chips" id="recent"></div>
-    </div>
     <input type="file" id="snapInput" accept="image/*" capture="environment" hidden>
     <input type="file" id="uploadInput" accept="image/*" hidden>
     <div class="card">
@@ -462,6 +458,11 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
     </div>
     <div class="card">
       <div class="row between" style="align-items:baseline"><h2 style="margin:0">Quick add</h2><button class="ibtn" id="mealsAll" hidden>See all</button></div>
+      <div id="recentCard" hidden style="margin-top:10px">
+        <div class="small muted" style="margin-bottom:6px">Your regulars – same numbers as last time</div>
+        <div class="chips" id="recent"></div>
+        <div class="small muted" style="margin:12px 0 6px">Your meals</div>
+      </div>
       <div class="chips few" id="meals" style="margin-top:10px"></div>
       <p class="muted small" style="margin:10px 0 0">Tap to add it straight away. Green = already added today.</p>
     </div>
@@ -1065,7 +1066,8 @@ function renderFood(){
   // recent foods (learned from your history; meals already on the buttons are left out)
   // foods you usually have at this time of day come first
   const cm = curMeal(), usual = r => (r.meals && r.meals[cm]) || 0;
-  const rec = (day.recentFoods || []).filter(r => !MEAL_NAMES.has(r.item.toLowerCase()))
+  // regulars: foods you've logged at least twice lately (the ones you usually have at this time of day first)
+  const rec = (day.recentFoods || []).filter(r => !MEAL_NAMES.has(r.item.toLowerCase()) && (r.count || 0) >= 2)
     .map((r, i) => ({ r, i })).sort((a, b) => usual(b.r) - usual(a.r) || a.i - b.i).map(x => x.r).slice(0, 8);
   $('recentCard').hidden = !rec.length;
   $('recent').innerHTML = rec.map((r,i) => {

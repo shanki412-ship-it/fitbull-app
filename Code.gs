@@ -2546,8 +2546,8 @@ function webAddFood(dateStr, kcal, protein, item, source, fat, sugar, meal) {
   let k = num_(kcal), p = num_(protein), f = num_(fat), su = num_(sugar), src = source || 'custom';
   if (k === null && p === null) {
     if (!name) throw new Error('Enter a food name or the numbers');
-    const local = localEstimate_(name);
-    if (local) { k = local.kcal; p = local.protein; f = f === null ? local.fat : f; su = su === null ? local.sugar : su; src = 'estimate'; }
+    const mine = historyFood_(name), local = mine || localEstimate_(name);
+    if (local) { k = local.kcal; p = local.protein; f = f === null ? local.fat : f; su = su === null ? local.sugar : su; src = mine ? 'usual' : 'estimate'; }
     else { k = 0; p = 0; src = 'pending'; }
   } else if (name && (f === null || su === null)) {
     // numbers typed but not fat/sugar: fill those from the food table when the name is recognised
@@ -2573,12 +2573,13 @@ function webEstimateFood(id) {
   if (!f) throw new Error('Item not found – refresh and try again');
   const name = String(f.values[2]);
   const t0 = Date.now();
-  let est = localEstimate_(name) || recalcFood_(name, 0, 20000, true);
+  const mine = historyFood_(name, id);
+  let est = mine || localEstimate_(name) || recalcFood_(name, 0, 20000, true);
   // a second try only if the first answered quickly but unclearly (not when Google was slow or out of allowance)
   if (!est && Date.now() - t0 < 8000 && !/allowance|slow|429/i.test(lastGeminiError_)) est = estimateFood_(name);
   const sh = foodSheet_();
   if (est) {
-    sh.getRange(f.row, 4, 1, 3).setValues([[est.kcal, est.protein, 'estimate']]);
+    sh.getRange(f.row, 4, 1, 3).setValues([[est.kcal, est.protein, mine ? 'usual' : 'estimate']]);
     sh.getRange(f.row, 8, 1, 2).setValues([[est.fat === null ? '' : est.fat, est.sugar === null ? '' : est.sugar]]);
   } else sh.getRange(f.row, 6).setValue('needs numbers');
   syncFoodTotals_(f.values[0]);
@@ -2610,10 +2611,10 @@ function webRenameFood(id, item, meal) {
   const name = String(item || '').trim().slice(0, 100);
   if (!name) throw new Error('Type what the food is first');
   const sh = foodSheet_();
-  const local = localEstimate_(name);
+  const mine = historyFood_(name, id), local = mine || localEstimate_(name);
   if (local) {
-    sh.getRange(f.row, 3, 1, 4).setValues([[name, local.kcal, local.protein, 'estimate']]);
-    sh.getRange(f.row, 8, 1, 2).setValues([[local.fat, local.sugar]]);
+    sh.getRange(f.row, 3, 1, 4).setValues([[name, local.kcal, local.protein, mine ? 'usual' : 'estimate']]);
+    sh.getRange(f.row, 8, 1, 2).setValues([[local.fat === null ? '' : local.fat, local.sugar === null ? '' : local.sugar]]);
   } else sh.getRange(f.row, 3, 1, 4).setValues([[name, f.values[3], f.values[4], 'pending']]);
   if (meal) sh.getRange(f.row, 10).setValue(mealSlot_(meal, f.values[1]));
   syncFoodTotals_(f.values[0]);
@@ -2642,7 +2643,7 @@ function webDeleteFood(id) {
 function recentFoods_(d) {
   const sh = foodSheet_();
   if (sh.getLastRow() < 2) return [];
-  const to = key_(addDays_(d, -1)), from = key_(addDays_(d, -30));
+  const to = key_(addDays_(d, -1)), from = key_(addDays_(d, -45));
   const byName = {};
   foodValues_().forEach(r => {
     if (!(r[0] instanceof Date)) return;
@@ -2753,6 +2754,24 @@ const FOOD_DB = [
 const WORD_NUMS = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, half: 0.5 };
 
 /** Instant estimate when every part of the description is in FOOD_DB, e.g. "3 egg omelette, 2 chapathi and dal". */
+/** Your own record: the last time you logged exactly this food (same name), its numbers – no AI needed. */
+function foodKey_(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9%½ ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+function historyFood_(name, excludeId) {
+  const key = foodKey_(name); if (!key) return null;
+  const rows = foodValues_();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i], src = String(r[5]);
+    if (src === 'pending' || src === 'needs numbers' || (excludeId && String(r[6]) === String(excludeId))) continue;
+    if (foodKey_(r[2]) !== key) continue;
+    const kcal = Number(r[3]) || 0, protein = Number(r[4]) || 0;
+    if (!kcal && !protein) continue;
+    return { kcal, protein, fat: num_(r[7]), sugar: num_(r[8]) };
+  }
+  return null;
+}
+/** Known food: your own history first, then the food table. */
+function knownFood_(name, excludeId) { return historyFood_(name, excludeId) || localEstimate_(name); }
+
 function localEstimate_(desc) {
   const text = String(desc).toLowerCase()
     .replace(/(chai|tea|coffee)\s+(with\s+)?milk/g, '$1')     // milk is already in the chai/coffee numbers
@@ -2941,7 +2960,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-15.3';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-15.4';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;
