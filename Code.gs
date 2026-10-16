@@ -540,7 +540,7 @@ function dailyBrief() {
     });
     html += `</table>`;
   } else {
-    html += `<h2 style="margin:0 0 8px">${restLabel_(dow)}</h2>`;
+    html += `<h2 style="margin:0 0 8px">${restLabel_(dow, today)}</h2>`;
     if (ready.title) html += `<p style="background:#FFF4D6;padding:8px"><b>${ready.title}.</b> ${ready.message}</p>`;
   }
   try { html += runEmailLine_(today); } catch (e) { console.error(e); }
@@ -556,13 +556,20 @@ function dailyBrief() {
   MailApp.sendEmail({ name: appName_(), to: s['Email'], subject: subject, htmlBody: html });
 }
 
-function restLabel_(dow) {
+function restLabel_(dow, d) {
   const notes = cfg_().restDayNotes || {};
   const own = Object.keys(notes).find(k => dayIndex_(k) === dow);
   if (own) return notes[own];
-  const prevSport = sportOn_((dow + 6) % 7);
-  if (prevSport && prevSport.restNextMorning) return `Rest – recovery after ${prevSport.name.toLowerCase()} (an easy walk is fine)`;
-  return 'Rest day (an easy walk is fine)';
+  // "recovery after …" only when you actually logged that sport yesterday – not just because it was planned
+  if (d) {
+    let act = '';
+    try { const y = findLogRow_(addDays_(d, -1)); act = y ? activityOf_(y.values) : ''; } catch (e) {}
+    if (act && !/^none$/i.test(act)) {
+      const sp = sports_().find(x => act.toLowerCase().includes(String(x.name).toLowerCase()));
+      if (sp && sp.restNextMorning) return `Recovery after ${sp.name.toLowerCase()} – an easy walk is fine`;
+    }
+  }
+  return 'Rest day – an easy walk is fine';
 }
 
 // ---------- Readiness: how you feel decides today's plan ----------
@@ -1375,7 +1382,7 @@ function webGetDayData_(dateStr) {
     appName: appName_(), appTagline: appTagline_(),
     name: profile_().name,
     scheduled: sessionFor_(dow),
-    restLabel: restLabel_(dow),
+    restLabel: restLabel_(dow, d),
     sportToday: sport ? { name: sport.name, when: sport.when } : null,
     activities: activityOptions_(),
     meals: meals_(),
@@ -3000,7 +3007,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-15.8';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-16.1';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;
