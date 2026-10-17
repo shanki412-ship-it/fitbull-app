@@ -35,6 +35,9 @@ details.fold>summary .hint{display:block;font-size:13px;color:var(--muted);font-
 details.fold>summary::after{content:'\203A';font-size:24px;color:var(--muted);transition:transform .15s}
 details.fold[open]>summary::after{transform:rotate(90deg)}
 details.fold[open]>summary{margin-bottom:12px}
+.micbtn{display:flex;align-items:center;gap:6px;flex:none;padding:0 12px;min-height:44px;font-weight:700}
+.micbtn.rec{background:var(--red);border-color:var(--red);color:#fff;animation:micpulse 1.2s infinite}
+@keyframes micpulse{50%{opacity:.75}}
 .actrow{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin:0 0 12px}
 .actrow .btn{padding-left:6px;padding-right:6px;font-size:15px;white-space:nowrap}
 .actrow .btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:0}
@@ -456,7 +459,11 @@ nav .dot{position:absolute;top:8px;right:calc(50% - 26px);width:8px;height:8px;b
     <div class="card" id="otherCard" hidden>
       <div class="row between" style="align-items:baseline"><h2>Something else</h2><button class="ibtn" id="hideOther">Close</button></div>
       <label for="fn">What did you eat? (optional if you type the numbers)</label>
-      <input id="fn" placeholder="e.g. 2 dosa with sambhar and chutney">
+      <div class="row" style="gap:8px;align-items:stretch">
+        <input id="fn" placeholder="e.g. 2 dosa with sambhar and chutney" style="flex:1;min-width:0">
+        <button class="ibtn micbtn" id="micBtn" type="button" aria-label="Say what you ate"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micTxt">Speak</span></button>
+      </div>
+      <div class="small muted" id="micMsg" style="margin-top:6px" hidden></div>
       <div class="grid2" style="margin-top:10px">
         <div><label for="fk">kcal (optional)</label><input id="fk" inputmode="numeric"></div>
         <div><label for="fp">Protein g (optional)</label><input id="fp" inputmode="numeric"></div>
@@ -1258,8 +1265,62 @@ function syncAddBtn(){
 ['fn','fk','fp','ff','fs'].forEach(id => $(id).addEventListener('input', syncAddBtn));
 syncAddBtn();
 $('showOther').onclick = () => { $('otherCard').hidden = false; $('showOther').hidden = true; $('fn').focus(); };
-$('hideOther').onclick = () => { $('otherCard').hidden = true; $('showOther').hidden = false;
+$('hideOther').onclick = () => { if (micRec) { try { micRec.stop(); } catch (e) {} } $('micMsg').hidden = true; $('otherCard').hidden = true; $('showOther').hidden = false;
   ['fn','fk','fp','ff','fs'].forEach(id => $(id).value=''); syncAddBtn(); };
+// ---------------------------------------------------------------- voice input for food
+// 1) the phone's own speech-to-text (free, instant) when the browser allows it here
+// 2) otherwise record a short clip and let Gemini write down what you said
+// 3) if the microphone is blocked: use the 🎤 on your keyboard
+let micRec = null, micMedia = null, micChunks = [], micTimer = 0, micStart = 0;
+function micUI(state, msg){
+  const b = $('micBtn'); b.classList.toggle('rec', state === 'rec'); b.disabled = state === 'busy';
+  $('micTxt').textContent = state === 'rec' ? 'Stop' : state === 'busy' ? 'Listening…' : 'Speak';
+  $('micMsg').hidden = !msg; $('micMsg').textContent = msg || '';
+}
+function micKeyboardTip(why){ micUI('idle', (why ? why + ' ' : '') + 'Tip: tap the box and use the 🎤 on your phone keyboard instead.'); $('fn').focus(); }
+function micSpeech(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+  try {
+    const r = new SR(); micRec = r; let finalText = '', base = $('fn').value.trim();
+    r.lang = navigator.language || 'en-IE'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    r.onresult = ev => { let interim = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) finalText += t; else interim += t; }
+      $('fn').value = (base ? base + ', ' : '') + (finalText + interim).trim(); };
+    r.onerror = ev => { micRec = null;
+      if (/not-allowed|service-not-allowed|audio-capture|network/.test(ev.error)) { micRecord(); }      // fall back to recording
+      else micUI('idle', ev.error === 'no-speech' ? 'Didn\'t catch that – tap Speak and try again.' : ''); };
+    r.onend = () => { if (micRec === r) { micRec = null; micUI('idle', $('fn').value.trim() ? 'Check the text, then tap Add food.' : ''); } };
+    r.start(); micUI('rec', 'Listening… say what you ate, e.g. "two dosa with sambar and a coffee".');
+    return true;
+  } catch (e) { micRec = null; return false; }
+}
+async function micRecord(){
+  if (!navigator.mediaDevices || !window.MediaRecorder) return micKeyboardTip('Voice isn\'t available in this browser.');
+  try { micMedia = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { return micKeyboardTip('The microphone is blocked for this page.'); }
+  const pick = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+  const mr = new MediaRecorder(micMedia, pick ? { mimeType: pick } : undefined); micChunks = [];
+  mr.ondataavailable = e => { if (e.data && e.data.size) micChunks.push(e.data); };
+  mr.onstop = () => {
+    micMedia.getTracks().forEach(t => t.stop()); clearInterval(micTimer);
+    const blob = new Blob(micChunks, { type: mr.mimeType || pick || 'audio/webm' });
+    if (blob.size < 2000) return micUI('idle', 'Didn\'t catch that – tap Speak and try again.');
+    micUI('busy', 'Writing down what you said…');
+    const fr = new FileReader();
+    fr.onload = () => run().withSuccessHandler(t => { const base = $('fn').value.trim(); $('fn').value = (base ? base + ', ' : '') + t; micUI('idle', 'Check the text, then tap Add food.'); })
+      .withFailureHandler(e => micKeyboardTip((e && e.message) || 'Couldn\'t understand the recording.'))
+      .webVoiceFood(String(fr.result).split(',')[1], blob.type);
+    fr.readAsDataURL(blob);
+  };
+  micRec = mr; mr.start(); micStart = Date.now();
+  micUI('rec', 'Recording… tap Stop when you\'re done (max 30 s).');
+  micTimer = setInterval(() => { const s = Math.round((Date.now() - micStart) / 1000); $('micTxt').textContent = 'Stop ' + s + 's'; if (s >= 30) mr.stop(); }, 500);
+}
+$('micBtn').onclick = () => {
+  if (micRec) { try { micRec.stop(); } catch (e) {} return; }       // second tap = stop
+  if (!micSpeech()) micRecord();
+};
+// add the typed (or spoken) food
 $('addFood').onclick = () => {
   const k = $('fk').value.trim(), p = $('fp').value.trim(), n = $('fn').value.trim(), fa = $('ff').value.trim(), su = $('fs').value.trim();
   if (!n && !k && !p && !fa && !su) return;

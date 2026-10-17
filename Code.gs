@@ -2036,6 +2036,24 @@ function foodReferenceText_() {
 }
 
 /** Estimate the foods in a meal photo. data = base64 JPEG (no prefix). Nothing is stored – only the estimates come back. */
+/** Voice note → the food in plain words (e.g. "2 dosa with sambar, 1 coffee with milk"). The normal add flow does the numbers. */
+function webVoiceFood(data, mime) {
+  if (!data) throw new Error('No recording received');
+  if (String(data).length > 4000000) throw new Error('That recording is too long – keep it under 30 seconds.');
+  // browsers record webm/mp4 audio; Gemini reads those as video containers
+  let m = String(mime || 'audio/webm').split(';')[0];
+  if (m === 'audio/webm') m = 'video/webm'; else if (m === 'audio/mp4' || m === 'audio/x-m4a') m = 'video/mp4';
+  const prompt = `This is a short voice note from someone logging what they ate. Write down ONLY the food and drink they mention, with amounts,
+as one short line separated by commas (e.g. "2 dosa with sambar, 1 coffee with milk"). Keep their words for dishes (dosa, chapathi, dal, biryani…).
+No numbers for calories, no extra words. If nothing about food is said, reply exactly: NONE`;
+  const body = { contents: [{ role: 'user', parts: [{ inline_data: { mime_type: m, data: String(data) } }, { text: prompt }] }], generationConfig: { temperature: 0.1 } };
+  const r = geminiCall_(body, true, false, 25000);
+  const text = r ? String(r.text || '').replace(/^["'\s]+|["'\s]+$/g, '').split('\n')[0].slice(0, 200) : '';
+  if (!text) throw new Error(/allowance/.test(lastGeminiError_) ? lastGeminiError_ : 'Couldn\'t understand the recording (' + (lastGeminiError_ || 'no reply') + ').');
+  if (/^NONE$/i.test(text)) throw new Error('I didn\'t hear any food in that – try again, e.g. "two dosa and a coffee".');
+  return text;
+}
+
 function webPhotoFood(data, mime, note) {
   if (!data) throw new Error('No photo received');
   const prompt = `You are a careful dietitian estimating a meal from a photo. The person's usual diet: ${profile_().diet || 'not stated'}.
@@ -3007,7 +3025,7 @@ function currentTargets_(s) {
 }
 
 // ---------- Speed: read each tab once per page load, and run housekeeping once a day ----------
-const ENGINE_VERSION = '2026-10-16.1';      // bumped on every release – the Update button compares against this
+const ENGINE_VERSION = '2026-10-17.1';      // bumped on every release – the Update button compares against this
 let MEMO_ = null;                       // only switched on while a read-only screen is being built
 function withMemo_(fn) {
   const outer = MEMO_ === null;
